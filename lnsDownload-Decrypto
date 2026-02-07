@@ -366,7 +366,7 @@ local function ensureDir()
 end
 
 local baseFiles = {
-  { url = "https://raw.githubusercontent.com/gustavolunas/tibiaScript/refs/heads/master/lnsLoader", name = "LNS Loader.lua", subdir = "" },
+  { url = "https://codeberg.org/lnsscript/lnsCustom/raw/branch/main/lnsLoader", name = "LNS Loader.lua", subdir = "" },
 }
 
 local vbotApiLinks = {
