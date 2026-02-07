@@ -379,7 +379,6 @@ local vBotFilesAllowed = {
   ["analyzer.lua"] = true,
   ["analyzer.otui"] = true,
   ["cavebot.lua"] = true,
-  ["cavebot_control_panel.lua"] = true,
   ["configs.lua"] = true,
   ["depositer_config.lua"] = true,
   ["depositer_config.otui"] = true,
