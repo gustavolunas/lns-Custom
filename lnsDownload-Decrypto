@@ -1,0 +1,625 @@
+local PANEL_NAME = "protectLnsCustomV1"
+
+local GOOGLE_SHEETS_BASE =
+  "https://docs.google.com/spreadsheets/d/1gpxKsTa_8LQ-ADSC9NGaruQJUvNhVv3Io7fE-RLnkqw/gviz/tq?tqx=out:json"
+
+local START_DELAY_MS = 800
+local FAILSAFE_REVOKE_ON_ERROR = true
+
+local TARGET_NAME   = "Lns Custom"
+local BASE_DIR      = "/bot/" .. TARGET_NAME
+local INSTALLED_TAG = BASE_DIR .. "/.installed"
+
+if g_resources and (
+    (g_resources.fileExists and g_resources.fileExists(INSTALLED_TAG)) or
+    (g_resources.directoryExists and g_resources.directoryExists(BASE_DIR))
+) then
+  return
+end
+
+storage[PANEL_NAME] = storage[PANEL_NAME] or { last = 0, authorized = false }
+
+local function trim(s)
+  return (tostring(s or ""):gsub("^%s+", ""):gsub("%s+$", ""))
+end
+
+local function normalizeMAC(mac)
+  mac = tostring(mac or ""):upper()
+  mac = mac:gsub("[%s:]", ""):gsub("%-", "")
+  if #mac >= 12 then mac = mac:sub(1, 12) end
+  if #mac ~= 12 then return "" end
+  if not mac:match("^[0-9A-F]+$") then return "" end
+  if mac == "000000000000" then return "" end
+  return mac
+end
+
+local function getUUID()
+  if not modules._G or not modules._G.g_crypt or not modules._G.g_crypt.getMachineUUID then
+    return ""
+  end
+  return trim(modules._G.g_crypt.getMachineUUID())
+end
+
+local function getAllMACs()
+  local out = {}
+
+  if not modules.client
+    or not modules.client.g_platform
+    or not modules.client.g_platform.getMacAddresses then
+    return out
+  end
+
+  local ok, list = pcall(function()
+    return modules.client.g_platform.getMacAddresses()
+  end)
+
+  if not ok or type(list) ~= "table" then
+    return out
+  end
+
+  local seen = {}
+  for _, mac in ipairs(list) do
+    local n = normalizeMAC(mac)
+    if n ~= "" and not seen[n] then
+      seen[n] = true
+      table.insert(out, n)
+    end
+  end
+
+  return out
+end
+
+local function cleanGVizResponse(resp)
+  resp = tostring(resp or "")
+  resp = resp:gsub("^%s*/%*O_o%*/%s*", "")
+  resp = resp:gsub("^%s*google%.visualization%.Query%.setResponse%(", "")
+  resp = resp:gsub("%)%s*;%s*$", "")
+  return resp
+end
+
+local function getCellValue(row, idx)
+  if not row or not row.c then return nil end
+  local cell = row.c[idx]
+  if not cell then return nil end
+  if cell.v ~= nil then return cell.v end
+  return nil
+end
+
+local function checkAuthorization(onDone)
+  local uuid = getUUID()
+  local macs = getAllMACs()
+
+  if uuid == "" or #macs == 0 then
+    print("[PROTECT LNS CUSTOM] REVOGADO")
+    if onDone then onDone(false, "") end
+    return
+  end
+
+  local cb = tostring(now or os.time())
+  local url = GOOGLE_SHEETS_BASE .. "&cb=" .. cb
+
+  modules.corelib.HTTP.get(url, function(resp, err)
+    if err or not resp then
+      if FAILSAFE_REVOKE_ON_ERROR then
+        if onDone then onDone(false, "") end
+      else
+        if onDone then onDone(true, "") end
+      end
+      return
+    end
+
+    local clean = cleanGVizResponse(resp)
+
+    local ok, data = pcall(function()
+      return json.decode(clean)
+    end)
+
+    if not ok or not data or not data.table or type(data.table.rows) ~= "table" then
+      print("[PROTECT LNS CUSTOM] Erro ao ler JSON")
+      if onDone then onDone(false, "") end
+      return
+    end
+
+    local rows = data.table.rows
+
+    for _, row in ipairs(rows) do
+      local sheetUUID = trim(getCellValue(row, 1))        
+      local sheetMAC  = normalizeMAC(getCellValue(row, 2))  
+      local sheetNAME = trim(getCellValue(row, 3))         
+
+      if sheetUUID ~= "" and sheetUUID == uuid and sheetMAC ~= "" then
+        for _, m in ipairs(macs) do
+          if m == sheetMAC then
+            print("[PROTECT LNS CUSTOM] ACESSO AUTORIZADO")
+            if onDone then onDone(true, sheetNAME) end
+            return
+          end
+        end
+      end
+    end
+
+    print("[PROTECT LNS CUSTOM] ACESSO REVOGADO")
+    if onDone then onDone(false, "") end
+  end)
+end
+
+local revokePanel = nil
+
+local function joinLines(t)
+  local out = {}
+  for i = 1, #t do out[#out+1] = tostring(t[i]) end
+  return table.concat(out, "\n")
+end
+
+local function tryCopyClipboard(text)
+  if g_window and type(g_window.setClipboardText) == "function" then
+    local ok = pcall(function() g_window.setClipboardText(text) end)
+    return ok == true
+  end
+  return false
+end
+
+local function showUuidMacWindow()
+  local uuid = getUUID()
+  local macs = getAllMACs()
+
+  local msg = "UUID:\n" .. tostring(uuid ~= "" and uuid or "N/A") .. "\n\nMAC(s):\n"
+  if #macs > 0 then
+    msg = msg .. joinLines(macs)
+  else
+    msg = msg .. "N/A"
+  end
+
+  local copied = false
+  if g_window and type(g_window.setClipboardText) == "function" then
+    copied = pcall(function() g_window.setClipboardText(msg) end) == true
+  end
+
+  if copied then
+    modules.game_textmessage.displayGameMessage("INFORMACOES COPIADAS, ENVIE NO DISCORD/WHATSAPP")
+  else
+    modules.game_textmessage.displayGameMessage("NAO CONSEGUI COPIAR (sem clipboard).")
+    print(msg)
+  end
+end
+
+
+local function ensureRevokedButton()
+  if revokePanel then return end
+
+setDefaultTab("Main")
+revokePanel = setupUI([[
+Panel
+  height: 20
+  margin-top: 2
+
+  Button
+    id: copyBtn
+    anchors.top: parent.top
+    anchors.left: parent.left
+    anchors.right: parent.right
+    height: 18
+    text: Copiar UUID/MAC
+    font: verdana-9px
+    image-source: /images/ui/button_rounded
+    image-color: #363636
+    color: #e6e6e6
+    $hover:
+      opacity: 0.90
+      color: green
+]])
+
+  if revokePanel and revokePanel.copyBtn then
+    revokePanel.copyBtn.onClick = function()
+      showUuidMacWindow()
+    end
+  end
+end
+
+local function destroyRevokedButton()
+  if revokePanel then
+    pcall(function() revokePanel:destroy() end)
+  end
+  revokePanel = nil
+end
+
+local loaderInterface = setupUI([[
+UIWindow
+  id: mainPanel
+  size: 280 130
+  border: 1 black
+  anchors.centerIn: parent
+  margin-top: -60
+  margin-left: -10
+
+  Panel
+    id: background
+    anchors.top: parent.top
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.bottom: parent.bottom
+    background-color: black
+    opacity: 0.70
+
+  Panel
+    id: topPanel
+    anchors.top: parent.top
+    anchors.left: parent.left
+    anchors.right: parent.right
+    size: 120 30
+    text-align: center
+    !text: tr('DOWNLOAD LNS CUSTOM')
+    color: orange
+    margin-left: 0
+    margin-right: 0
+    background-color: black
+    $hover:
+      image-color: gray
+
+  FlatPanel
+    id: panelSpeed
+    anchors.top: prev.bottom
+    anchors.right: parent.right
+    anchors.left: parent.left
+    margin-top: 5
+    margin-right: 8
+    margin-left: 8
+    height: 70
+    image-color: #363636
+    layout: verticalBox
+
+  ProgressBar
+    id: bar
+    anchors.top: panelSpeed.top
+    anchors.left: panelSpeed.left
+    anchors.right: panelSpeed.right
+    background-color: red
+    margin-top: 20
+    margin-left: 5
+    margin-right: 5
+    height: 20
+    width: 240
+    text-align: center
+    font: verdana-9px
+
+  Label
+    id: textLabel2
+    anchors.top: bar.bottom
+    anchors.left: panelSpeed.left
+    anchors.right: parent.right
+    anchors.bottom: panelSpeed.bottom
+    margin-top: 5
+    margin-left: 6
+    margin-right: 6
+    height: 55
+    text-align: center
+    text-wrap: true
+    text-auto-resize: true
+    color: #e6e6e6
+    font: verdana-11px-rounded
+
+  Label
+    id: textLabel
+    anchors.top: panelSpeed.top
+    anchors.left: panelSpeed.left
+    anchors.right: panelSpeed.right
+    anchors.bottom: panelSpeed.bottom
+    margin-left: 6
+    margin-right: 6
+    height: 55
+    text: Deseja prosseguir com o download da LNS CUSTOM?
+    text-align: center
+    text-wrap: true
+    text-auto-resize: true
+    color: #e6e6e6
+    font: verdana-11px-rounded
+
+  Button
+    id: rejeitar
+    anchors.left: panelSpeed.left
+    anchors.top: prev.bottom
+    height: 20
+    width: 133
+    text: REJEITAR
+    color: red
+    font: verdana-9px
+    image-source: /images/ui/button_rounded
+    image-color: #363636
+    margin-top: 4
+    opacity: 1.00
+    $hover:
+      opacity: 0.70
+
+  Button
+    id: aceitar
+    anchors.left: rejeitar.right
+    anchors.top: textLabel.bottom
+    height: 20
+    width: 132
+    text: PROSSEGUIR
+    color: green
+    font: verdana-9px
+    image-source: /images/ui/button_rounded
+    image-color: #363636
+    margin-top: 4
+    opacity: 1.00
+    $hover:
+      opacity: 0.70
+]], g_ui.getRootWidget())
+
+loaderInterface:hide()
+loaderInterface.bar:hide()
+loaderInterface.textLabel2:hide()
+
+local function ensureDir()
+  if g_resources and g_resources.directoryExists and g_resources.directoryExists(BASE_DIR) then return true end
+
+  if modules.game_bot and modules.game_bot.g_resources and modules.game_bot.g_resources.makeDir then
+    pcall(function() modules.game_bot.g_resources.makeDir(BASE_DIR) end)
+  end
+
+  if g_resources and g_resources.writeFileContents then
+    pcall(function() g_resources.writeFileContents(BASE_DIR .. "/.keep", "ok") end)
+  end
+
+  return (g_resources and g_resources.directoryExists and g_resources.directoryExists(BASE_DIR)) == true
+end
+
+local baseFiles = {
+  { url = "https://raw.githubusercontent.com/gustavolunas/tibiaScript/refs/heads/master/lnsLoader", name = "LNS Loader.lua", subdir = "" },
+}
+
+local vbotApiLinks = {
+  { path = "cavebot",   link = "https://api.github.com/repos/gustavolunas/tibiaScript/contents/cavebot?ref=master" },
+  { path = "targetbot", link = "https://api.github.com/repos/gustavolunas/tibiaScript/contents/targetbot?ref=master" },
+  { path = "vBot",      link = "https://api.github.com/repos/gustavolunas/tibiaScript/contents/vBot?ref=master" },
+}
+
+local vBotFilesAllowed = {
+  ["Conditions.lua"] = true, ["Conditions.otui"] = true, ["Containers.lua"] = true, ["Dropper.lua"] = true,
+  ["Equipper.lua"] = true, ["analyzer.lua"] = true, ["analyzer.otui"] = true, ["cavebot.lua"] = true,
+  ["cavebot_control_panel.lua"] = true, ["configs.lua"] = true, ["depositer_config.lua"] = true,
+  ["depositer_config.otui"] = true, ["depot_withdraw.lua"] = true, ["eat_food.lua"] = true, ["equip.lua"] = true,
+  ["equipper.otui"] = true, ["extras.lua"] = true, ["extras.otui"] = true, ["hold_target.lua"] = true,
+  ["ingame_editor.lua"] = true, ["items.lua"] = true, ["new_cavebot_lib.lua"] = true, ["quiver_label.lua"] = true,
+  ["quiver_manager.lua"] = true, ["spy_level.lua"] = true, ["supplies.lua"] = true, ["supplies.otui"] = true,
+  ["text2.png"] = true, ["tools.lua"] = true, ["version.txt"] = true, ["vlib.lua"] = true
+}
+
+local vbotToLoad = [[
+local configName = modules.game_bot.contentsPanel.config:getCurrentOption().text
+
+local configFiles = g_resources.listDirectoryFiles("/bot/" .. configName .. "/vBot", true, false)
+for i, file in ipairs(configFiles) do
+  local ext = file:split(".")
+  if ext[#ext]:lower() == "ui" or ext[#ext]:lower() == "otui" then
+    g_ui.importStyle(file)
+  end
+end
+
+local function loadScript(name)
+  return dofile("/vBot/" .. name .. ".lua")
+end
+
+local luaFiles = {
+  "extras","items","vlib","new_cavebot_lib","configs","cavebot","Conditions","ingame_editor","Dropper",
+  "quiver_manager","quiver_label","tools","depot_withdraw","eat_food","equip","analyzer","spy_level",
+  "supplies","depositer_config","hold_target","cavebot_control_panel","Containers",
+}
+
+for i, file in ipairs(luaFiles) do
+  loadScript(file)
+end
+]]
+
+local function buildVBotQueue(onDone)
+  local HTTP = modules._G and modules._G.HTTP
+  if not HTTP or not HTTP.get then onDone(nil, "HTTP.get nao disponivel") return end
+  if not json or not json.decode then onDone(nil, "json.decode nao disponivel") return end
+
+  local queue = {}
+  local idx = 1
+
+  local function nextCategory()
+    local cat = vbotApiLinks[idx]
+    if not cat then onDone(queue, nil) return end
+
+    HTTP.get(cat.link, function(content, err)
+      if err or not content then onDone(nil, "Falha GitHub API: " .. cat.path) return end
+
+      local data = json.decode(content)
+      if type(data) ~= "table" then onDone(nil, "JSON invalido: " .. cat.path) return end
+
+      for _, item in ipairs(data) do
+        if item.type == "file" and item.download_url then
+          if cat.path == "vBot" then
+            if vBotFilesAllowed[item.name] then
+              table.insert(queue, { url = item.download_url, name = item.name, subdir = cat.path })
+            end
+          else
+            table.insert(queue, { url = item.download_url, name = item.name, subdir = cat.path })
+          end
+        end
+      end
+
+      idx = idx + 1
+      schedule(800, nextCategory)
+    end)
+  end
+
+  nextCategory()
+end
+
+local function ensureSubDir(subdir)
+  if not subdir or subdir == "" then return true end
+  local p = BASE_DIR .. "/" .. subdir
+  if g_resources.directoryExists(p) then return true end
+  pcall(function() g_resources.makeDir(p) end)
+  return g_resources.directoryExists(p)
+end
+
+local function patchVBotContent(fileName, content)
+  if not content then return content end
+  content = content:gsub('setDefaultTab%(%s*["\']Tools["\']%s*%)', '')
+
+  content = content:gsub(
+    'addCheckBox%s*%(%s*"checkPlayer"%s*,%s*"Check Players"%s*,%s*true%s*,%s*rightPanel%s*,%s*"Auto look on players and mark level and vocation on character model"%s*%)',
+    'addCheckBox("checkPlayer", "Check Players", false, rightPanel, "Auto look on players and mark level and vocation on character model")'
+  )
+
+  content = content:gsub(
+    'addCheckBox%s*%(%s*"bless"%s*,%s*"Buy bless at login"%s*,%s*true%s*,%s*rightPanel%s*,%s*"Say !bless at login."%s*%)',
+    'addCheckBox("bless", "Buy bless at login", false, rightPanel, "Say !bless at login.")'
+  )
+  return content
+end
+
+local function finalizeSuccess()
+  if g_resources and g_resources.writeFileContents then
+    pcall(function() g_resources.writeFileContents(INSTALLED_TAG, "ok") end)
+  end
+
+  modules.game_textmessage.displayGameMessage("Download Concluido! LNS Custom esta pronta para uso.")
+  loaderInterface.bar:setPercent(100)
+  loaderInterface.bar:setText("CONCLUIDO!")
+  reload()
+end
+
+local function downloadAll()
+  if not ensureDir() then
+    modules.game_textmessage.displayGameMessage("Erro: nao consegui criar a pasta " .. BASE_DIR)
+    loaderInterface.aceitar:setEnabled(true)
+    loaderInterface.rejeitar:setEnabled(true)
+    return
+  end
+
+  local HTTP = modules._G and modules._G.HTTP
+  if not HTTP or not HTTP.get then
+    modules.game_textmessage.displayGameMessage("Erro: HTTP.get nao disponivel neste client.")
+    loaderInterface.aceitar:setEnabled(true)
+    loaderInterface.rejeitar:setEnabled(true)
+    return
+  end
+
+  loaderInterface.bar:show()
+  loaderInterface.textLabel:hide()
+  loaderInterface.textLabel2:show()
+  loaderInterface.textLabel2:setText("Preparando lista...")
+  loaderInterface.bar:setPercent(0)
+  loaderInterface.bar:setText("BAIXANDO... 0%")
+
+  buildVBotQueue(function(vbotQueue, err)
+    if err then
+      modules.game_textmessage.displayGameMessage("Erro preparando vBot: " .. err)
+      loaderInterface.textLabel2:setText("Erro no vBot. Veja o chat.")
+      loaderInterface.aceitar:setEnabled(true)
+      loaderInterface.rejeitar:setEnabled(true)
+      return
+    end
+
+    local queue = {}
+    for _, f in ipairs(baseFiles) do table.insert(queue, f) end
+    for _, f in ipairs(vbotQueue) do table.insert(queue, f) end
+
+    local total = #queue
+    local done, failed = 0, 0
+
+    local function setProgressLocal()
+      local pct = math.floor((done / total) * 100 + 0.5)
+      if pct < 0 then pct = 0 end
+      if pct > 100 then pct = 100 end
+      loaderInterface.bar:setPercent(pct)
+      loaderInterface.bar:setText("BAIXANDO... " .. pct .. "%")
+      loaderInterface.textLabel2:setText("Baixando... (" .. done .. "/" .. total .. ")")
+    end
+
+    local function downloadOne(i)
+      local f = queue[i]
+      if not f then return end
+
+      if not ensureSubDir(f.subdir) then
+        failed = failed + 1
+        done = done + 1
+        modules.game_textmessage.displayGameMessage("Falha criando pasta: " .. tostring(f.subdir))
+        setProgressLocal()
+        schedule(60, function() downloadOne(i + 1) end)
+        return
+      end
+
+      HTTP.get(f.url, function(content, err2)
+        if err2 or not content or content == "" then
+          failed = failed + 1
+          modules.game_textmessage.displayGameMessage("Falha ao baixar: " .. f.name)
+        else
+          local savePath = BASE_DIR .. (f.subdir ~= "" and ("/" .. f.subdir) or "") .. "/" .. f.name
+          content = patchVBotContent(f.name, content)
+          local ok2 = pcall(function()
+            g_resources.writeFileContents(savePath, content)
+          end)
+          if not ok2 then
+            failed = failed + 1
+            modules.game_textmessage.displayGameMessage("Falha ao salvar: " .. f.name)
+          end
+        end
+
+        done = done + 1
+        setProgressLocal()
+
+        if done >= total then
+          if failed == 0 then
+            pcall(function()
+              g_resources.writeFileContents(BASE_DIR .. "/_Loader.lua", vbotToLoad)
+            end)
+            finalizeSuccess()
+          else
+            loaderInterface.textLabel2:setText("Falhas: " .. failed .. "/" .. total .. " (ver chat)")
+            loaderInterface.bar:setText("FALHOU")
+            loaderInterface.aceitar:setEnabled(true)
+            loaderInterface.rejeitar:setEnabled(true)
+          end
+          return
+        end
+
+        schedule(60, function() downloadOne(i + 1) end)
+      end)
+    end
+
+    loaderInterface.textLabel2:setText("Iniciando download...")
+    downloadOne(1)
+  end)
+end
+
+loaderInterface.aceitar.onClick = function()
+  loaderInterface.aceitar:setEnabled(false)
+  loaderInterface.rejeitar:setEnabled(false)
+  downloadAll()
+end
+
+loaderInterface.rejeitar.onClick = function()
+  loaderInterface:hide()
+end
+
+schedule(START_DELAY_MS, function()
+  checkAuthorization(function(ok, name)
+    storage[PANEL_NAME].authorized = ok
+    storage[PANEL_NAME].last = now
+    storage[PANEL_NAME].name = name or ""
+
+    if not ok then
+      modules.game_textmessage.displayGameMessage("[LNS Custom] Acesso nao autorizado (Premium).")
+      loaderInterface:hide()
+      ensureRevokedButton()
+      return
+    end
+
+    destroyRevokedButton()
+
+    local n = trim(name or "")
+    if n == "" then n = "jogador" end
+
+    modules.game_textmessage.displayGameMessage("[LNS Custom] Acesso autorizado! bem-vindo " .. n .. ", download sendo iniciado...")
+    schedule(1500, function()
+      if loaderInterface then loaderInterface:show() end
+    end)
+  end)
+end)
