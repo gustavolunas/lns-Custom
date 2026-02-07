@@ -27,7 +27,8 @@ local files = {
   "ICONS",
   "INGAME",
   "PARTY",
-  "IMBUIMENT"
+  "IMBUIMENT",
+  "CONTAINER"
 }
 
 storage[PANEL_NAME] = storage[PANEL_NAME] or { last = 0, authorized = false, name = "" }
