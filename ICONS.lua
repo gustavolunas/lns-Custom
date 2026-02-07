@@ -1,0 +1,1443 @@
+setDefaultTab("Main")
+
+-- -------------------------
+-- Helpers (schedule safe)
+-- -------------------------
+local function later(ms, fn)
+  if type(schedule) == "function" then
+    return schedule(ms, fn)
+  end
+  if type(scheduleEvent) == "function" then
+    return scheduleEvent(fn, ms)
+  end
+  if g_dispatcher and type(g_dispatcher.scheduleEvent) == "function" then
+    return g_dispatcher:scheduleEvent(fn, ms)
+  end
+  return fn()
+end
+
+local function nowMillis()
+  if g_clock and type(g_clock.millis) == "function" then return g_clock.millis() end
+  if now then return now end
+  return 0
+end
+
+local function clamp(v, a, b)
+  if v < a then return a end
+  if v > b then return b end
+  return v
+end
+
+local function v01ToPct(v)
+  return math.floor((clamp(v or 0, 0, 1) * 100) + 0.5)
+end
+
+local function pctTo01(p)
+  return clamp((p or 0) / 100, 0, 1)
+end
+
+local function normPct(text)
+  local n = tonumber((text or ""):match("%-?%d+"))
+  if not n then return nil end
+  if n < 0 then n = 0 end
+  if n > 100 then n = 100 end
+  return math.floor(n)
+end
+
+local function normalizeText(s)
+  s = tostring(s or ""):lower()
+  s = s:gsub("^%s+", ""):gsub("%s+$", "")
+  return s
+end
+
+-- -------------------------
+-- Config name
+-- -------------------------
+local MyConfigName = "default"
+if modules and modules.game_bot and modules.game_bot.contentsPanel
+  and modules.game_bot.contentsPanel.config
+  and modules.game_bot.contentsPanel.config.getCurrentOption then
+  local opt = modules.game_bot.contentsPanel.config:getCurrentOption()
+  if opt and opt.text then
+    MyConfigName = opt.text
+  end
+end
+
+-- -------------------------
+-- DB por config
+-- -------------------------
+storage.lnsIconsDB = storage.lnsIconsDB or {}
+storage.lnsIconsDB[MyConfigName] = storage.lnsIconsDB[MyConfigName] or {
+  enabled = false,
+  iconConfig = {},     -- show_xxx
+  icons = {},          -- posições { [id] = {x=0..1,y=0..1} }
+  status = {},         -- status ON/OFF { [id] = true/false }
+  items = {}           -- [id] = itemId
+}
+local db = storage.lnsIconsDB[MyConfigName]
+db.iconConfig = db.iconConfig or {}
+db.icons      = db.icons      or {}
+db.status     = db.status     or {}
+db.items      = db.items      or {}
+
+-- -------------------------
+-- Apply relative position
+-- -------------------------
+local function applyRelativePos(widget, cfg)
+  if not widget or not cfg then return end
+  local parent = widget:getParent()
+  if not parent then return end
+
+  local r = parent:getRect()
+  local w = r.width - widget:getWidth()
+  local h = r.height - widget:getHeight()
+
+  widget:setMarginTop(math.max(h * (-0.5) - parent:getMarginTop(), h * (-0.5 + (cfg.y or 0))))
+  widget:setMarginLeft(w * (-0.5 + (cfg.x or 0)))
+end
+
+-- -------------------------
+-- BotItem extract id
+-- -------------------------
+local function extractItemId(a, b, c)
+  local function fromAny(x)
+    if type(x) == "number" then return x end
+    if type(x) == "string" then
+      local n = tonumber(x:match("%d+"))
+      return n or 0
+    end
+    if type(x) == "table" then
+      if x.getId then
+        local ok, id = pcall(function() return x:getId() end)
+        if ok and tonumber(id) then return tonumber(id) end
+      end
+      if x.id and tonumber(x.id) then return tonumber(x.id) end
+    end
+    return 0
+  end
+
+  local id = fromAny(b)
+  if id == 0 then id = fromAny(a) end
+  if id == 0 then id = fromAny(c) end
+  return tonumber(id) or 0
+end
+
+local function applyIconItem(iconWidget, itemId)
+  if not iconWidget or not iconWidget.item then return end
+  itemId = tonumber(itemId) or 0
+
+  if iconWidget.item.setItemId then
+    iconWidget.item:setItemId(itemId)
+    return
+  end
+
+  if iconWidget.item.setItem then
+    if itemId > 0 and Item and Item.create then
+      iconWidget.item:setItem(Item.create(itemId))
+    else
+      iconWidget.item:setItem(nil)
+    end
+    return
+  end
+
+  if iconWidget.item.setImageSource then
+    iconWidget.item:setImageSource("")
+  end
+end
+
+-- -------------------------
+-- addIcone (map icon)
+-- -------------------------
+local iconsWithoutPosition = 0
+
+local function addIcone(id, options, onPosChanged)
+  local panel = modules.game_interface.gameMapPanel
+  options = options or {}
+
+  db.icons[id] = db.icons[id] or {}
+  local cfg = db.icons[id]
+
+  if type(cfg.x) ~= "number" or type(cfg.y) ~= "number" then
+    cfg.x = 0.01 + math.floor(iconsWithoutPosition / 5) / 10
+    cfg.y = 0.05 + (iconsWithoutPosition % 5) / 5
+    iconsWithoutPosition = iconsWithoutPosition + 1
+  end
+
+  local w = g_ui.createWidget("BotIcon", panel)
+  w.botWidget = true
+  w.botIcon = true
+
+  -- item
+  local savedItem = tonumber(db.items[id])
+  if savedItem == nil then
+    savedItem = tonumber(options.defaultItemId) or 0
+    db.items[id] = savedItem
+  end
+  applyIconItem(w, savedItem)
+
+  -- status saved
+  w.status:show()
+  local savedStatus = db.status[id]
+  if savedStatus == nil then
+    savedStatus = (options.defaultOn == true)
+  end
+  w.status:setOn(savedStatus == true)
+
+  -- text below
+  if options.text then
+    w.text:setText(options.text)
+    w.text:setFont("verdana-9px")
+    w.text:setColor("white")
+    w.text:setMarginBottom("0")
+  else
+    w.text:setText("")
+  end
+
+  w:addAnchor(AnchorHorizontalCenter, "parent", AnchorHorizontalCenter)
+  w:addAnchor(AnchorVerticalCenter, "parent", AnchorVerticalCenter)
+
+  w.onGeometryChange = function(widget)
+    if widget:isDragging() then return end
+    applyRelativePos(widget, cfg)
+  end
+
+  -- default click toggles status (can be overridden by binds)
+  w.onClick = function()
+    local newState = not w.status:isOn()
+    w.status:setOn(newState)
+    db.status[id] = newState
+  end
+
+  -- CTRL+drag
+  if options.movable ~= false then
+    w.onDragEnter = function(widget, mousePos)
+      if not modules.corelib.g_keyboard.isCtrlPressed() then return false end
+      widget:breakAnchors()
+      widget.movingReference = { x = mousePos.x - widget:getX(), y = mousePos.y - widget:getY() }
+      return true
+    end
+
+    w.onDragMove = function(widget, mousePos)
+      local pr = widget:getParent():getRect()
+      local x = clamp(mousePos.x - widget.movingReference.x, pr.x, pr.x + pr.width - widget:getWidth())
+      local y = clamp(mousePos.y - widget.movingReference.y, pr.y - widget:getParent():getMarginTop(), pr.y + pr.height - widget:getHeight())
+      widget:move(x, y)
+      return true
+    end
+
+    w.onDragLeave = function(widget)
+      local parent = widget:getParent()
+      local pr = parent:getRect()
+
+      local x = widget:getX() - pr.x
+      local y = widget:getY() - pr.y
+      local width  = pr.width  - widget:getWidth()
+      local height = pr.height - widget:getHeight()
+
+      cfg.x = clamp(x / math.max(1, width), 0, 1)
+      cfg.y = clamp(y / math.max(1, height), 0, 1)
+
+      widget:addAnchor(AnchorHorizontalCenter, "parent", AnchorHorizontalCenter)
+      widget:addAnchor(AnchorVerticalCenter, "parent", AnchorVerticalCenter)
+      applyRelativePos(widget, cfg)
+
+      if type(onPosChanged) == "function" then
+        onPosChanged(cfg)
+      end
+      return true
+    end
+  end
+
+  applyRelativePos(w, cfg)
+  return w, cfg
+end
+
+-- -------------------------
+-- Row template (check + botitem + text + x/y)
+-- -------------------------
+local rowTemplate = [[
+UIWidget
+  id: root
+  height: 20
+  focusable: true
+  background-color: alpha
+  opacity: 1.00
+
+  $hover:
+    background-color: #2F2F2F
+    opacity: 0.75
+
+  $focus:
+    background-color: #404040
+    opacity: 0.90
+
+  CheckBox
+    id: check
+    anchors.left: parent.left
+    anchors.verticalCenter: parent.verticalCenter
+    margin-left: 6
+    margin-top: 3
+    width: 18
+    height: 18
+
+  BotItem
+    id: itemPick
+    anchors.left: check.right
+    anchors.verticalCenter: parent.verticalCenter
+    margin-left: 6
+    width: 18
+    height: 18
+
+  Label
+    id: text
+    anchors.left: itemPick.right
+    anchors.verticalCenter: parent.verticalCenter
+    margin-left: 6
+    width: 127
+    font: verdana-9px-bold
+    color: white
+    text: ""
+
+  Label
+    id: lblX
+    anchors.left: text.right
+    anchors.verticalCenter: parent.verticalCenter
+    margin-left: 0
+    width: 16
+    font: verdana-9px
+    color: white
+    text: "X:"
+
+  BotTextEdit
+    id: editX
+    anchors.left: lblX.right
+    anchors.verticalCenter: parent.verticalCenter
+    margin-left: 3
+    width: 36
+    height: 18
+    text: "0"
+
+  Label
+    id: lblY
+    anchors.left: editX.right
+    anchors.verticalCenter: parent.verticalCenter
+    margin-left: 10
+    width: 16
+    font: verdana-9px
+    color: white
+    text: "Y:"
+
+  BotTextEdit
+    id: editY
+    anchors.left: lblY.right
+    anchors.verticalCenter: parent.verticalCenter
+    margin-left: 3
+    width: 36
+    height: 18
+    text: "0"
+]]
+
+-- -------------------------
+-- Base UI (button + window)
+-- -------------------------
+local applyIconsVisibility = function() end
+
+local iconButton = setupUI([[
+Panel
+  height: 20
+  margin-top: -3
+  BotSwitch
+    id: title
+    anchors.top: parent.top
+    anchors.left: parent.left
+    text-align: center
+    width: 110
+    text: Icones
+    font: verdana-9px
+    color: white
+    image-source: /images/ui/button_rounded
+    $on:
+      font: verdana-9px
+      color: green
+      image-color: gray
+    $!on:
+      image-color: gray
+      color: white
+
+  Button
+    id: settings
+    anchors.top: prev.top
+    anchors.left: prev.right
+    anchors.right: parent.right
+    margin-left: 0
+    height: 17
+    text: Config
+    font: verdana-9px
+    image-color: #363636
+    image-source: /images/ui/button_rounded
+    opacity: 1.00
+    color: white
+    $hover:
+      opacity: 0.95
+      color: green
+]])
+iconButton.title:setOn(db.enabled == true)
+
+iconButton.title.onClick = function(widget)
+  local newState = not widget:isOn()
+  widget:setOn(newState)
+  db.enabled = newState
+  applyIconsVisibility()
+end
+
+local iconsInterface = setupUI([[
+UIWindow
+  id: mainPanel
+  size: 327 360
+  border: 1 black
+  anchors.centerIn: parent
+  margin-top: -60
+
+  Panel
+    id: background
+    anchors.top: parent.top
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.bottom: parent.bottom
+    background-color: black
+    opacity: 0.70
+
+  Panel
+    id: topPanel
+    anchors.top: parent.top
+    anchors.left: parent.left
+    anchors.right: parent.right
+    size: 120 30
+    text-align: center
+    !text: tr('LNS Custom | Icones Control')
+    color: orange
+    margin-left: 0
+    margin-right: 0
+    background-color: black
+    $hover:
+      image-color: gray
+
+  UIButton
+    id: closePanel
+    anchors.top: topPanel.top
+    anchors.right: parent.right
+    size: 18 18
+    margin-top: 6
+    margin-right: 10
+    background-color: orange
+    text: X
+    color: white
+    opacity: 1.00
+    $hover:
+      color: black
+      opacity: 0.80
+
+  TextEdit
+    id: textpesquisarIcon
+    anchors.top: topPanel.bottom
+    anchors.left: parent.left
+    anchors.right: parent.right
+    margin-left: 8
+    margin-right: 8
+    margin-top: 5
+    width: 240
+    font: verdana-9px
+    image-color: #363636
+    placeholder: TEXTO DE PESQUISA ICON
+    placeholder-font: verdana-9px
+
+  TextList
+    id: panelMain
+    anchors.top: prev.bottom
+    anchors.right: parent.right
+    anchors.left: parent.left
+    margin-top: 2
+    margin-right: 20
+    margin-left: 8
+    margin-bottom: 8
+    height: 290
+    image-color: #363636
+    vertical-scrollbar: spellListScrollBar
+    layout: verticalBox
+
+  VerticalScrollBar
+    id: spellListScrollBar
+    anchors.top: panelMain.top
+    anchors.bottom: panelMain.bottom
+    anchors.left: panelMain.right
+    pixels-scroll: true
+    image-color: #363636
+    margin-top: 0
+    margin-bottom: 0
+    step: 10
+]], g_ui.getRootWidget())
+iconsInterface:hide()
+
+iconsInterface.closePanel.onClick = function() iconsInterface:hide() end
+iconButton.settings.onClick = function()
+  if not iconsInterface:isVisible() then
+    iconsInterface:show()
+    iconsInterface:raise()
+    iconsInterface:focus()
+  end
+end
+
+-- -------------------------
+-- ICON LIST (base)
+-- -------------------------
+local ICON_LIST = {
+  { id="lnsAttackBot",        label="ATTACK BOT",        iconText="ATTACK" },
+  { id="lnsHealing",          label="HEALING",           iconText="HEALING" },
+  { id="lnsConditions",       label="CONDITIONS",        iconText="CONDIT." },
+  { id="lnsSwapRingAMulet",   label="SWAP RING/AMULET",  iconText="RING/AMULET" },
+  { id="lnsFollow",           label="FOLLOW",            iconText="FOLLOW" },
+  { id="lnsSwapEquips",       label="SWAP EQUIPS",       iconText="SWAP EQUIPS" },
+  { id="lnsPushmax",          label="PUSHMAX",           iconText="PUSHMAX" },
+
+  -- Bot modules
+  { id="lnsCaveBot",          label="CAVEBOT",           iconText="CAVEBOT" },
+  { id="lnsTargetBot",        label="TARGETBOT",         iconText="TARGET" },
+
+  -- Party / Imbuiment
+  { id="lnsParty",            label="AUTO PARTY",        iconText="AUTO PARTY" },
+  { id="lnsImbuiment",        label="IMBUIMENT",         iconText="IMBUIMENT" },
+
+  -- Conditions examples
+  { id="lnsHaste",            label="AUTO HASTE",        iconText="HASTE" },
+  { id="lnsBuff",             label="AUTO BUFF",         iconText="BUFF" },
+  { id="lnsAntiLyze",         label="AUTO ANTI-LYZE",    iconText="ANTI-LYZE" },
+  { id="lnsUturaGran",        label="AUTO UTURA GRAN",   iconText="UTURA GRAN" },
+  { id="lnsAutoUtamoVita",    label="AUTO UTAMO VITA",   iconText="UTAMO" },
+  { id="lnsAutoUtanaVid",     label="AUTO UTANA VID",    iconText="UTANA VID" },
+  { id="lnsExetaRes",         label="AUTO EXETA RES",    iconText="EXETA RES" },
+  { id="lnsAmpRes",           label="AUTO AMP RES",      iconText="AMP RES" },
+  { id="lnsExetaLoot",        label="AUTO EXETA LOOT",   iconText="EXETA LOOT" },
+
+  -- Automations
+  { id="lnsAutoAol",          label="AUTO AOL",          iconText="AOL" },
+  { id="lnsAutoBless",        label="AUTO BLESS",        iconText="BLESS" },
+}
+
+-- -------------------------
+-- Inject Utilitários registered icons into ICON_LIST
+-- storage.lnsUtilIcons[MyConfigName][id] = { id, label, iconText, storeKey }
+-- -------------------------
+local function injectUtilitariosIntoIconList(list)
+  if not storage.lnsUtilIcons or not storage.lnsUtilIcons[MyConfigName] then return end
+
+  for _, def in pairs(storage.lnsUtilIcons[MyConfigName]) do
+    if def and def.id then
+      local exists = false
+      for i = 1, #list do
+        if list[i] and list[i].id == def.id then
+          exists = true
+          break
+        end
+      end
+      if not exists then
+        table.insert(list, {
+          id = def.id,
+          label = tostring(def.label or def.id):upper(),
+          iconText = tostring(def.iconText or def.label or def.id):upper(),
+          _utilStoreKey = def.storeKey
+        })
+      end
+    end
+  end
+end
+injectUtilitariosIntoIconList(ICON_LIST)
+
+-- normalize base labels to upper
+for _, it in ipairs(ICON_LIST) do
+  it.label = tostring(it.label or it.id):upper()
+  it.iconText = tostring(it.iconText or it.label or it.id):upper()
+end
+
+-- default: todos desativados (mostrar)
+for _, it in ipairs(ICON_LIST) do
+  it.key = "show_" .. it.id
+  if db.iconConfig[it.key] == nil then
+    db.iconConfig[it.key] = false
+  end
+end
+
+-- -------------------------
+-- Create icons + rows
+-- -------------------------
+local icons = {}
+local rows  = {}
+
+local function safeShow(w) if w and not w:isVisible() then w:show() end end
+local function safeHide(w) if w and w:isVisible() then w:hide() end end
+
+applyIconsVisibility = function()
+  if db.enabled ~= true then
+    for _, it in ipairs(ICON_LIST) do safeHide(icons[it.id]) end
+    return
+  end
+
+  for _, it in ipairs(ICON_LIST) do
+    if db.iconConfig[it.key] then
+      safeShow(icons[it.id])
+    else
+      safeHide(icons[it.id])
+    end
+  end
+end
+
+-- clear panel
+for _, child in ipairs(iconsInterface.panelMain:getChildren()) do
+  child:destroy()
+end
+
+for _, it in ipairs(ICON_LIST) do
+  local iconWidget, cfg = addIcone(it.id, {
+    movable = true,
+    text = it.iconText,
+    defaultOn = false,
+    defaultItemId = 0
+  }, function(newCfg)
+    local row = rows[it.id]
+    if not row then return end
+    row.editX._lnsBlock = true
+    row.editY._lnsBlock = true
+    row.editX:setText(tostring(v01ToPct(newCfg.x)))
+    row.editY:setText(tostring(v01ToPct(newCfg.y)))
+    row.editX._lnsBlock = false
+    row.editY._lnsBlock = false
+  end)
+
+  icons[it.id] = iconWidget
+
+  local row = g_ui.loadUIFromString(rowTemplate, iconsInterface.panelMain)
+  row:setId("row_" .. it.id)
+
+  row.text:setText(it.label)
+  row.check:setChecked(db.iconConfig[it.key] == true)
+
+  row.editX:setText(tostring(v01ToPct(cfg.x)))
+  row.editY:setText(tostring(v01ToPct(cfg.y)))
+
+  -- BotItem init + change
+  local saved = tonumber(db.items[it.id]) or 0
+  if row.itemPick then
+    if row.itemPick.setItemId then
+      row.itemPick:setItemId(saved)
+    elseif row.itemPick.setItem then
+      if saved > 0 and Item and Item.create then
+        row.itemPick:setItem(Item.create(saved))
+      else
+        row.itemPick:setItem(nil)
+      end
+    end
+
+    local function onPickChanged(w, a, b, c)
+      local id = extractItemId(a, b, c)
+
+      if id == 0 and w and w.getItem then
+        local it2 = w:getItem()
+        if it2 then
+          local ok, rid = pcall(function() return it2:getId() end)
+          if ok and tonumber(rid) then id = tonumber(rid) end
+        end
+      end
+
+      id = tonumber(id) or 0
+      db.items[it.id] = id
+      applyIconItem(iconWidget, id)
+    end
+
+    row.itemPick.onItemChange = onPickChanged
+    row.itemPick.onItemIdChange = onPickChanged
+  end
+
+  row.check.onCheckChange = function(_, checked)
+    db.iconConfig[it.key] = checked
+    applyIconsVisibility()
+  end
+
+  row.editX.onTextChange = function(w)
+    if w._lnsBlock then return end
+    local v = normPct(w:getText())
+    if not v then return end
+    cfg.x = pctTo01(v)
+    applyRelativePos(iconWidget, cfg)
+    w._lnsBlock = true
+    w:setText(tostring(v))
+    w._lnsBlock = false
+  end
+
+  row.editY.onTextChange = function(w)
+    if w._lnsBlock then return end
+    local v = normPct(w:getText())
+    if not v then return end
+    cfg.y = pctTo01(v)
+    applyRelativePos(iconWidget, cfg)
+    w._lnsBlock = true
+    w:setText(tostring(v))
+    w._lnsBlock = false
+  end
+
+  rows[it.id] = { root=row, check=row.check, editX=row.editX, editY=row.editY, itemPick=row.itemPick }
+end
+
+applyIconsVisibility()
+
+-- -------------------------
+-- Search filter
+-- -------------------------
+local function matchesIcon(it, q)
+  if q == "" then return true end
+  local a = normalizeText(it.label)
+  local b = normalizeText(it.iconText)
+  local c = normalizeText(it.id)
+  return (a:find(q, 1, true) ~= nil) or (b:find(q, 1, true) ~= nil) or (c:find(q, 1, true) ~= nil)
+end
+
+local function filterIconRows(query)
+  local q = normalizeText(query)
+  for _, it in ipairs(ICON_LIST) do
+    local rowPack = rows[it.id]
+    if rowPack and rowPack.root then
+      if matchesIcon(it, q) then rowPack.root:show() else rowPack.root:hide() end
+    end
+  end
+end
+
+iconsInterface.textpesquisarIcon.onTextChange = function(_, text)
+  filterIconRows(text)
+end
+
+-- =====================================================
+-- BIND HELPERS
+-- =====================================================
+
+-- 0) Call helper (suporta método com ":" e com ".")
+local function safeCall(obj, fnName, ...)
+  if not obj or not fnName then return false, nil end
+  local fn = obj[fnName]
+  if type(fn) ~= "function" then return false, nil end
+
+  -- tenta como método (self)
+  local ok, res = pcall(fn, obj, ...)
+  if ok then return true, res end
+
+  -- tenta como função estática
+  ok, res = pcall(fn, ...)
+  if ok then return true, res end
+
+  return false, nil
+end
+
+-- 1) Icon <-> BotSwitch/CheckBox storageKey.enabled (old model)
+local function bindIconToToggle(iconId, toggleWidget, storageKey)
+  if not icons or not icons[iconId] then return end
+  local icon = icons[iconId]
+
+  storage[storageKey] = storage[storageKey] or { enabled = false }
+  storage[storageKey].enabled = storage[storageKey].enabled == true
+
+  local lock = false
+
+  local function apply(state)
+    state = (state == true)
+    storage[storageKey].enabled = state
+    db.status[iconId] = state
+
+    if icon.status then
+      icon.status:show()
+      icon.status:setOn(state)
+    end
+
+    if toggleWidget then
+      if toggleWidget.setOn then
+        toggleWidget:setOn(state)
+      elseif toggleWidget.setChecked then
+        toggleWidget:setChecked(state)
+      end
+    end
+  end
+
+  apply(storage[storageKey].enabled)
+
+  icon.onClick = function()
+    if lock then return end
+    lock = true
+    apply(not (storage[storageKey].enabled == true))
+    lock = false
+  end
+
+  if toggleWidget then
+    local old = toggleWidget.onClick
+    if toggleWidget.setOn then
+      toggleWidget.onClick = function(w, ...)
+        if lock then return end
+        lock = true
+        if type(old) == "function" then pcall(old, w, ...) else w:setOn(not w:isOn()) end
+        apply(w:isOn())
+        lock = false
+      end
+    end
+
+    local oldChk = toggleWidget.onCheckChange
+    if toggleWidget.setChecked then
+      toggleWidget.onCheckChange = function(w, checked, ...)
+        if lock then return end
+        lock = true
+        if type(oldChk) == "function" then pcall(oldChk, w, checked, ...) end
+        apply(checked)
+        lock = false
+      end
+    end
+  end
+end
+
+-- 2) Icon <-> Conditions checkbox in storage[panel].checks[checkId]
+local function bindIconToConditionsCheck(iconId, panelName, checkId)
+  if not icons or not icons[iconId] then return end
+  local icon = icons[iconId]
+
+  storage[panelName] = storage[panelName] or { checks = {}, combos = {}, texts = {} }
+  storage[panelName].checks = storage[panelName].checks or {}
+
+  local lock = false
+
+  local function getState()
+    return storage[panelName].checks[checkId] == true
+  end
+
+  local function setState(state)
+    state = (state == true)
+    storage[panelName].checks[checkId] = state
+
+    if conditionsInterface and conditionsInterface[checkId] and conditionsInterface[checkId].setChecked then
+      conditionsInterface[checkId]:setChecked(state)
+    end
+
+    if icon.status then
+      icon.status:show()
+      icon.status:setOn(state)
+    end
+    db.status[iconId] = state
+  end
+
+  setState(getState())
+
+  icon.onClick = function()
+    if lock then return end
+    lock = true
+    setState(not getState())
+    lock = false
+  end
+end
+
+-- 3) Icon <-> Module (CaveBot/TargetBot) w/ sync via macro leve
+--    FIX: suporta isOn OU isOff, e métodos com self (:) / sem self (.)
+-- 3) Icon <-> Module (CaveBot/TargetBot) w/ sync via macro leve
+-- FIX FINAL: compatível com:
+-- - funções com ":" (self) e com "."
+-- - setOn() / setOff()
+-- - setOn(true/false) (muito comum)
+-- - fallback: se não existir setOff, usa setOn(false)
+local function bindIconToBotModule(iconId, moduleObj, isOnFn, setOnFn, setOffFn)
+  if not icons or not icons[iconId] then return end
+  local icon = icons[iconId]
+
+  local function callNoSelf(fnName, a)
+    if not moduleObj then return false, nil end
+    local fn = moduleObj[fnName]
+    if type(fn) ~= "function" then return false, nil end
+    local ok, res
+    if a == nil then ok, res = pcall(fn) else ok, res = pcall(fn, a) end
+    return ok, res
+  end
+
+  local function callWithSelf(fnName, a)
+    if not moduleObj then return false, nil end
+    local fn = moduleObj[fnName]
+    if type(fn) ~= "function" then return false, nil end
+    local ok, res
+    if a == nil then ok, res = pcall(fn, moduleObj) else ok, res = pcall(fn, moduleObj, a) end
+    return ok, res
+  end
+
+  local function safeBoolFrom(fnName)
+    -- tenta sem self
+    local ok, res = callNoSelf(fnName)
+    if ok then return res == true end
+    -- tenta com self
+    ok, res = callWithSelf(fnName)
+    if ok then return res == true end
+    return nil
+  end
+
+  local function safeIsOn()
+    if not moduleObj then return false end
+
+    -- isOnFn pode ser string ou { "isOn", "isOff" }
+    if type(isOnFn) == "table" then
+      -- tenta isOn
+      for i = 1, #isOnFn do
+        if isOnFn[i] == "isOn" then
+          local b = safeBoolFrom("isOn")
+          if b ~= nil then return b end
+        end
+      end
+      -- tenta isOff (inverte)
+      for i = 1, #isOnFn do
+        if isOnFn[i] == "isOff" then
+          local b = safeBoolFrom("isOff")
+          if b ~= nil then return not b end
+        end
+      end
+      return false
+    end
+
+    if type(isOnFn) == "string" and isOnFn ~= "" then
+      local b = safeBoolFrom(isOnFn)
+      if b ~= nil then return b end
+    end
+
+    -- fallback padrão
+    local b1 = safeBoolFrom("isOn")
+    if b1 ~= nil then return b1 end
+    local b2 = safeBoolFrom("isOff")
+    if b2 ~= nil then return not b2 end
+
+    return false
+  end
+
+  local function safeSetOn()
+    local name = (type(setOnFn) == "string" and setOnFn ~= "" and setOnFn) or "setOn"
+
+    -- 1) setOn() (sem args)
+    if select(1, callNoSelf(name)) then return end
+    if select(1, callWithSelf(name)) then return end
+
+    -- 2) setOn(true)
+    if select(1, callNoSelf(name, true)) then return end
+    if select(1, callWithSelf(name, true)) then return end
+
+    -- 3) alguns bots usam setOff(false) como "liga" (raro) -> não forçar isso
+  end
+
+  local function safeSetOff()
+    local offName = (type(setOffFn) == "string" and setOffFn ~= "" and setOffFn) or "setOff"
+    local onName  = (type(setOnFn) == "string" and setOnFn ~= "" and setOnFn) or "setOn"
+
+    -- 1) setOff() (sem args)
+    if select(1, callNoSelf(offName)) then return end
+    if select(1, callWithSelf(offName)) then return end
+
+    -- 2) setOff(true) / setOff(false) (dependendo do client)
+    if select(1, callNoSelf(offName, true)) then return end
+    if select(1, callWithSelf(offName, true)) then return end
+    if select(1, callNoSelf(offName, false)) then return end
+    if select(1, callWithSelf(offName, false)) then return end
+
+    -- 3) fallback universal: setOn(false)
+    if select(1, callNoSelf(onName, false)) then return end
+    if select(1, callWithSelf(onName, false)) then return end
+  end
+
+  local function applyState(state)
+    state = (state == true)
+    db.status[iconId] = state
+    if icon.status then
+      icon.status:show()
+      icon.status:setOn(state)
+    end
+  end
+
+  -- init
+  applyState(safeIsOn())
+
+  -- click
+  icon.onClick = function()
+    if safeIsOn() then
+      safeSetOff()
+      applyState(false)
+    else
+      safeSetOn()
+      applyState(true)
+    end
+  end
+
+  -- sync leve
+  macro(300, function()
+    if not icons or not icons[iconId] then return end
+    local s = safeIsOn()
+    if icon.status and icon.status:isOn() ~= s then
+      applyState(s)
+    end
+  end)
+end
+
+
+local function bindIconToBotModuleLate(iconId, getModuleFn)
+  local tries = 0
+  local maxTries = 200   -- ~20s (200 * 100ms)
+  local stepMs = 100
+
+  local function tryBind()
+    tries = tries + 1
+
+    if not icons or not icons[iconId] then
+      if tries < maxTries then later(stepMs, tryBind) end
+      return
+    end
+
+    local mod = nil
+    if type(getModuleFn) == "function" then
+      local ok, res = pcall(getModuleFn)
+      if ok then mod = res end
+    end
+
+    if not mod or type(mod) ~= "table" then
+      if tries < maxTries then later(stepMs, tryBind) end
+      return
+    end
+
+    -- tem que ter ao menos setOn/setOff (ou setOn) pra valer a pena
+    local hasSetOn  = type(mod.setOn)  == "function"
+    local hasSetOff = type(mod.setOff) == "function"
+    if not hasSetOn and not hasSetOff then
+      if tries < maxTries then later(stepMs, tryBind) end
+      return
+    end
+
+    -- agora sim: bind real
+    bindIconToBotModule(iconId, mod, {"isOn","isOff"}, "setOn", "setOff")
+  end
+
+  tryBind()
+end
+
+-- 4) Icon action (one-shot)
+local function bindIconToAction(iconId, actionFn)
+  if not icons or not icons[iconId] then return end
+  local icon = icons[iconId]
+
+  icon.onClick = function()
+    if type(actionFn) == "function" then
+      pcall(actionFn)
+    end
+    if icon.status then
+      icon.status:show()
+      icon.status:setOn(true)
+      later(300, function()
+        if icons and icons[iconId] and icons[iconId].status then
+          icons[iconId].status:setOn(false)
+        end
+      end)
+    end
+    db.status[iconId] = false
+  end
+end
+
+-- 5) Robust late bind: Icon <-> BotSwitch <-> storage[panelName].enabled
+local function bindIconToPanelEnabledLate(iconId, panelName, getSwitchFn)
+  local tries = 0
+  local maxTries = 80 -- ~8s se step=100ms
+  local stepMs = 100
+
+  local function tryBind()
+    tries = tries + 1
+
+    if not icons or not icons[iconId] then
+      if tries < maxTries then later(stepMs, tryBind) end
+      return
+    end
+
+    local sw = nil
+    if type(getSwitchFn) == "function" then
+      local ok, res = pcall(getSwitchFn)
+      if ok then sw = res end
+    end
+
+    if not sw or not sw.setOn or not sw.isOn then
+      if tries < maxTries then later(stepMs, tryBind) end
+      return
+    end
+
+    storage[panelName] = storage[panelName] or {}
+    storage[panelName].enabled = storage[panelName].enabled == true
+
+    local icon = icons[iconId]
+    local lock = false
+
+    local function apply(state)
+      state = (state == true)
+      storage[panelName].enabled = state
+
+      if sw:isOn() ~= state then
+        sw:setOn(state)
+      end
+
+      db.status[iconId] = state
+      if icon.status then
+        icon.status:show()
+        icon.status:setOn(state)
+      end
+    end
+
+    apply(storage[panelName].enabled)
+
+    local oldSwitchClick = sw.onClick
+    sw.onClick = function(widget, ...)
+      if lock then return end
+      lock = true
+
+      if type(oldSwitchClick) == "function" then
+        pcall(oldSwitchClick, widget, ...)
+      else
+        widget:setOn(not widget:isOn())
+      end
+
+      apply(widget:isOn())
+      lock = false
+    end
+
+    icon.onClick = function()
+      if lock then return end
+      lock = true
+      apply(not (storage[panelName].enabled == true))
+      lock = false
+    end
+  end
+
+  tryBind()
+end
+
+-- 6) PushMax (CORRIGIDO): ícone controla storage.pvpSystem.pushSystem.enabled + mainUI.switch
+local function bindIconToPushMaxLate(iconId)
+  local tries = 0
+  local maxTries = 120
+  local stepMs = 100
+
+  local function tryBind()
+    tries = tries + 1
+
+    if not icons or not icons[iconId] then
+      if tries < maxTries then later(stepMs, tryBind) end
+      return
+    end
+
+    -- precisa do switch do PushMax existir
+    local sw = (mainUI and mainUI.switch) or nil
+    if not sw or not sw.setOn or not sw.isOn then
+      if tries < maxTries then later(stepMs, tryBind) end
+      return
+    end
+
+    -- precisa do config do PushMax existir
+    storage.pvpSystem = storage.pvpSystem or {}
+    storage.pvpSystem.pushSystem = storage.pvpSystem.pushSystem or { enabled = false }
+    local cfg = storage.pvpSystem.pushSystem
+
+    local icon = icons[iconId]
+    local lock = false
+
+    local function apply(state)
+      state = (state == true)
+      cfg.enabled = state
+
+      if sw:isOn() ~= state then
+        sw:setOn(state)
+      end
+
+      db.status[iconId] = state
+      if icon.status then
+        icon.status:show()
+        icon.status:setOn(state)
+      end
+    end
+
+    -- init
+    apply(cfg.enabled == true)
+
+    -- wrap switch click (mantém o original do PushMax)
+    local oldSwitchClick = sw.onClick
+    sw.onClick = function(widget, ...)
+      if lock then return end
+      lock = true
+
+      if type(oldSwitchClick) == "function" then
+        pcall(oldSwitchClick, widget, ...)
+      else
+        widget:setOn(not widget:isOn())
+        cfg.enabled = widget:isOn()
+      end
+
+      -- após o click original, sincroniza pelo cfg.enabled (fonte de verdade)
+      apply(cfg.enabled == true)
+      lock = false
+    end
+
+    -- icon click
+    icon.onClick = function()
+      if lock then return end
+      lock = true
+      apply(not (cfg.enabled == true))
+      lock = false
+    end
+
+    -- sync leve (se algo externo ligar/desligar o push)
+    macro(300, function()
+      if not icons or not icons[iconId] then return end
+      local s = (cfg.enabled == true)
+      if icon.status and icon.status:isOn() ~= s then
+        apply(s)
+      end
+    end)
+  end
+
+  tryBind()
+end
+
+-- =====================================================
+-- BRIDGES (optional) - Utilitários -> Icons sync
+-- =====================================================
+LnsUtilIcons = LnsUtilIcons or {}
+
+function LnsUtilIcons.onToggleChanged(toggleKey, state)
+  if not storage.lnsUtilIcons or not storage.lnsUtilIcons[MyConfigName] then return end
+
+  local iconId = nil
+  for _, def in pairs(storage.lnsUtilIcons[MyConfigName]) do
+    if def and def.storeKey == toggleKey then
+      iconId = def.id
+      break
+    end
+  end
+  if not iconId then return end
+  if not icons or not icons[iconId] then return end
+
+  state = (state == true)
+  db.status[iconId] = state
+
+  local icon = icons[iconId]
+  if icon.status then
+    icon.status:show()
+    icon.status:setOn(state)
+  end
+
+  if state then
+    db.enabled = true
+    if iconButton and iconButton.title and iconButton.title.setOn then
+      iconButton.title:setOn(true)
+    end
+
+    local showKey = "show_" .. iconId
+    db.iconConfig[showKey] = true
+
+    if rows and rows[iconId] and rows[iconId].check and rows[iconId].check.setChecked then
+      rows[iconId].check:setChecked(true)
+    end
+    applyIconsVisibility()
+  end
+end
+
+-- =====================================================
+-- BINDS (your project)
+-- =====================================================
+
+-- Conditions binds
+bindIconToConditionsCheck("lnsHaste", "conditionsInterface", "spellHaste")
+bindIconToConditionsCheck("lnsBuff", "conditionsInterface", "spellBuff")
+bindIconToConditionsCheck("lnsAntiLyze", "conditionsInterface", "spellAntilyze")
+bindIconToConditionsCheck("lnsAutoUtamoVita", "conditionsInterface", "spellUtamo")
+bindIconToConditionsCheck("lnsAutoUtanaVid", "conditionsInterface", "spellUtana")
+bindIconToConditionsCheck("lnsExetaRes", "conditionsInterface", "exetaRes")
+bindIconToConditionsCheck("lnsAmpRes", "conditionsInterface", "exetaAmpRes")
+bindIconToConditionsCheck("lnsUturaGran", "conditionsInterface", "spellUtura")
+bindIconToConditionsCheck("lnsExetaLoot", "conditionsInterface", "exetaLoot")
+
+-- Common toggles (must exist in your main UI)
+if healingButton and healingButton.title then bindIconToToggle("lnsHealing", healingButton.title, "healingButton") end
+if comboButton and comboButton.title then bindIconToToggle("lnsAttackBot", comboButton.title, "comboButton") end
+if conditionsButton and conditionsButton.title then bindIconToToggle("lnsConditions", conditionsButton.title, "conditionsButton") end
+if followButton and followButton.title then bindIconToToggle("lnsFollow", followButton.title, "followButton") end
+if buttonSwapEquips and buttonSwapEquips.title then bindIconToToggle("lnsSwapEquips", buttonSwapEquips.title, "buttonSwapEquips") end
+if swapButton and swapButton.title then bindIconToToggle("lnsSwapRingAMulet", swapButton.title, "swapButton") end
+
+-- CaveBot / TargetBot (FIX: suporta : e fallback isOff)
+bindIconToBotModuleLate("lnsCaveBot", function()
+  return CaveBot
+end)
+
+bindIconToBotModuleLate("lnsTargetBot", function()
+  return TargetBot
+end)
+-- PushMax (FIX REAL)
+bindIconToPushMaxLate("lnsPushmax")
+
+-- Utilitários icons
+local function bindUtilitariosIcons()
+  if not storage.lnsUtilIcons or not storage.lnsUtilIcons[MyConfigName] then return end
+  for _, def in pairs(storage.lnsUtilIcons[MyConfigName]) do
+    if def and def.id and def.storeKey and icons[def.id] then
+      local iconId = def.id
+      local key = def.storeKey
+      local icon = icons[iconId]
+
+      icon.onClick = function()
+        local newState = true
+
+        if storage.utilityToggles then
+          newState = not (storage.utilityToggles[key] == true)
+        end
+
+        if type(setUtilityToggle) == "function" then
+          setUtilityToggle(key, newState)
+        else
+          storage.utilityToggles = storage.utilityToggles or {}
+          storage.utilityToggles[key] = newState
+          if LnsUtilIcons and type(LnsUtilIcons.onToggleChanged) == "function" then
+            LnsUtilIcons.onToggleChanged(key, newState)
+          end
+        end
+
+        if newState then
+          db.enabled = true
+          if iconButton and iconButton.title and iconButton.title.setOn then
+            iconButton.title:setOn(true)
+          end
+          db.iconConfig["show_" .. iconId] = true
+          if rows[iconId] and rows[iconId].check and rows[iconId].check.setChecked then
+            rows[iconId].check:setChecked(true)
+          end
+          applyIconsVisibility()
+        end
+
+        db.status[iconId] = newState
+        if icon.status then
+          icon.status:show()
+          icon.status:setOn(newState)
+        end
+      end
+
+      local s = (storage.utilityToggles and storage.utilityToggles[key] == true)
+      db.status[iconId] = s
+      if icon.status then
+        icon.status:show()
+        icon.status:setOn(s)
+      end
+    end
+  end
+end
+bindUtilitariosIcons()
+
+-- PARTY: prefer bridge (LnsPartyBridge), else late bind to UI switch
+if icons["lnsParty"] then
+  local icon = icons["lnsParty"]
+  icon.onClick = function()
+    if LnsPartyBridge and type(LnsPartyBridge.getEnabled) == "function" and type(LnsPartyBridge.setEnabled) == "function" then
+      local newState = not LnsPartyBridge.getEnabled()
+      LnsPartyBridge.setEnabled(newState)
+      db.status["lnsParty"] = newState
+      if icon.status then icon.status:show(); icon.status:setOn(newState) end
+      if newState then
+        db.enabled = true
+        iconButton.title:setOn(true)
+        db.iconConfig["show_lnsParty"] = true
+        if rows["lnsParty"] and rows["lnsParty"].check then rows["lnsParty"].check:setChecked(true) end
+        applyIconsVisibility()
+      end
+      return
+    end
+
+    storage.autoParty = storage.autoParty or {}
+    storage.autoParty.enabled = not (storage.autoParty.enabled == true)
+    local s = storage.autoParty.enabled == true
+    db.status["lnsParty"] = s
+    if icon.status then icon.status:show(); icon.status:setOn(s) end
+  end
+
+  local initState = false
+  if LnsPartyBridge and type(LnsPartyBridge.getEnabled) == "function" then
+    initState = LnsPartyBridge.getEnabled()
+  else
+    initState = storage.autoParty and storage.autoParty.enabled == true
+  end
+  db.status["lnsParty"] = initState
+  if icon.status then icon.status:show(); icon.status:setOn(initState) end
+
+  bindIconToPanelEnabledLate("lnsParty", "autoParty", function()
+    return (autopartyui and autopartyui.status) or (tcAutoParty)
+  end)
+end
+
+-- IMBUIMENT: late bind to panelName (match your imbuiment panelName)
+bindIconToPanelEnabledLate("lnsImbuiment", "imbuimentSystem", function()
+  return buttonImbuiment and buttonImbuiment.status
+end)
+
+-- =====================================================
+-- AUTO AOL (controlled by icon status)
+-- =====================================================
+macro(200, function()
+  local iconId = "lnsAutoAol"
+  if db.status[iconId] ~= true then return end
+
+  local aolId = tonumber(db.items[iconId]) or 3057
+  if aolId <= 0 then return end
+
+  if not getNeck or not findItem or not moveToSlot then return end
+
+  local neck = getNeck()
+  local hasAol = neck and neck.getId and (neck:getId() == aolId)
+  if hasAol then return end
+
+  local aol = findItem(aolId)
+  if aol then
+    local neckSlot = SlotNeck or 2
+    moveToSlot(aol, neckSlot, 1)
+  else
+    say("!aol")
+    delay(1000)
+  end
+end)
+
+-- =====================================================
+-- AUTO BLESS (controlled by icon status)
+-- =====================================================
+local blessState = { hasBought = false }
+
+local function getBlessCommand()
+  if not g_game or not g_game.getWorldName then
+    return "!bless"
+  end
+  local world = g_game.getWorldName()
+  if world == "Telaria" or world == "Eternia" then
+    return "!bless yes"
+  end
+  return "!bless"
+end
+
+macro(1000, function()
+  local iconId = "lnsAutoBless"
+  if db.status[iconId] ~= true then return end
+  if not say or not player then return end
+
+  local blessCommand = getBlessCommand()
+
+  if blessState.hasBought ~= true then
+    say(blessCommand)
+    blessState.hasBought = true
+    return
+  end
+
+  if player.getBlessings and g_game.getClientVersion then
+    if g_game.getClientVersion() > 1000 and player:getBlessings() == 0 then
+      say(blessCommand)
+    end
+  end
+end)
+
+blessState.hasBought = false
