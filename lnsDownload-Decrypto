@@ -370,20 +370,27 @@ local baseFiles = {
 }
 
 local vbotApiLinks = {
-  { path = "cavebot",   link = "https://api.github.com/repos/gustavolunas/tibiaScript/contents/cavebot?ref=master" },
-  { path = "targetbot", link = "https://api.github.com/repos/gustavolunas/tibiaScript/contents/targetbot?ref=master" },
-  { path = "vBot",      link = "https://api.github.com/repos/gustavolunas/tibiaScript/contents/vBot?ref=master" },
+  { path = "cavebot", link = "https://codeberg.org/api/v1/repos/lnsscript/lnsCustom/contents/cavebot?ref=main"},
+  { path = "targetbot", link = "https://codeberg.org/api/v1/repos/lnsscript/lnsCustom/contents/targetbot?ref=main"},
+  {path = "vBot", link = "https://codeberg.org/api/v1/repos/lnsscript/lnsCustom/contents/vBot?ref=main"},
 }
 
 local vBotFilesAllowed = {
-  ["Conditions.lua"] = true, ["Conditions.otui"] = true, ["Containers.lua"] = true, ["Dropper.lua"] = true,
-  ["Equipper.lua"] = true, ["analyzer.lua"] = true, ["analyzer.otui"] = true, ["cavebot.lua"] = true,
-  ["cavebot_control_panel.lua"] = true, ["configs.lua"] = true, ["depositer_config.lua"] = true,
-  ["depositer_config.otui"] = true, ["depot_withdraw.lua"] = true, ["eat_food.lua"] = true, ["equip.lua"] = true,
-  ["equipper.otui"] = true, ["extras.lua"] = true, ["extras.otui"] = true, ["hold_target.lua"] = true,
-  ["ingame_editor.lua"] = true, ["items.lua"] = true, ["new_cavebot_lib.lua"] = true, ["quiver_label.lua"] = true,
-  ["quiver_manager.lua"] = true, ["spy_level.lua"] = true, ["supplies.lua"] = true, ["supplies.otui"] = true,
-  ["text2.png"] = true, ["tools.lua"] = true, ["version.txt"] = true, ["vlib.lua"] = true
+  ["analyzer.lua"] = true,
+  ["analyzer.otui"] = true,
+  ["cavebot.lua"] = true,
+  ["cavebot_control_panel.lua"] = true,
+  ["configs.lua"] = true,
+  ["depositer_config.lua"] = true,
+  ["depositer_config.otui"] = true,
+  ["extras.lua"] = true,
+  ["extras.otui"] = true,
+  ["items.lua"] = true,
+  ["new_cavebot_lib.lua"] = true,
+  ["supplies.lua"] = true,
+  ["supplies.otui"] = true,
+  ["vlib.lua"] = true,
+
 }
 
 local vbotToLoad = [[
@@ -401,10 +408,18 @@ local function loadScript(name)
   return dofile("/vBot/" .. name .. ".lua")
 end
 
+-- here you can set manually order of scripts
+-- libraries should be loaded first
 local luaFiles = {
-  "extras","items","vlib","new_cavebot_lib","configs","cavebot","Conditions","ingame_editor","Dropper",
-  "quiver_manager","quiver_label","tools","depot_withdraw","eat_food","equip","analyzer","spy_level",
-  "supplies","depositer_config","hold_target","cavebot_control_panel","Containers",
+  "extras", 
+  "items",
+  "vlib",
+  "new_cavebot_lib",
+  "configs",
+  "cavebot",
+  "analyzer",
+  "supplies",
+  "depositer_config",
 }
 
 for i, file in ipairs(luaFiles) do
