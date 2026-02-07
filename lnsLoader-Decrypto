@@ -1,0 +1,379 @@
+setDefaultTab("Main")
+
+local PANEL_NAME = "protectLnsScriptsV1"
+
+local GOOGLE_SHEETS_BASE =
+  "https://docs.google.com/spreadsheets/d/1gpxKsTa_8LQ-ADSC9NGaruQJUvNhVv3Io7fE-RLnkqw/gviz/tq?tqx=out:json"
+
+local START_DELAY_MS = 150
+local FAILSAFE_REVOKE_ON_ERROR = true
+
+-- =========================
+-- LOADER CONFIG (RAW)
+-- =========================
+local baseUrl = "https://raw.githubusercontent.com/gustavolunas/lns-Custom/refs/heads/main/"
+
+local files = {
+  "COMBO",
+  "HEALING",
+  "CONDITIONS",
+  "SWAP",
+  "FOLLOW",
+  "UTILITARIOS",
+  "TRAVEL",
+  "SWAPEQUIP",
+  "PUSHMAX",
+  "ICONS",
+  "INGAME",
+  "PARTY",
+  "IMBUIMENT"
+}
+
+storage[PANEL_NAME] = storage[PANEL_NAME] or { last = 0, authorized = false, name = "" }
+
+-- =========================
+-- Helpers (schedule safe)
+-- =========================
+local function later(ms, fn)
+  if type(schedule) == "function" then
+    return schedule(ms, fn)
+  end
+  if type(scheduleEvent) == "function" then
+    return scheduleEvent(fn, ms)
+  end
+  if g_dispatcher and type(g_dispatcher.scheduleEvent) == "function" then
+    return g_dispatcher:scheduleEvent(fn, ms)
+  end
+  return fn()
+end
+
+local MSG_PREFIX = "[LNS Scripts] "
+local function gameMsg(text)
+  if modules and modules.game_textmessage and modules.game_textmessage.displayGameMessage then
+    modules.game_textmessage.displayGameMessage(text)
+  else
+    print(text)
+  end
+end
+
+local function trim(s)
+  return (tostring(s or ""):gsub("^%s+", ""):gsub("%s+$", ""))
+end
+
+local function normalizeMAC(mac)
+  mac = tostring(mac or ""):upper()
+  mac = mac:gsub("[%s:]", ""):gsub("%-", "")
+  if #mac >= 12 then mac = mac:sub(1, 12) end
+  if #mac ~= 12 then return "" end
+  if not mac:match("^[0-9A-F]+$") then return "" end
+  if mac == "000000000000" then return "" end
+  return mac
+end
+
+-- =========================
+-- UUID / MAC (sem _G)
+-- =========================
+local function getUUID()
+  if g_crypt and type(g_crypt.getMachineUUID) == "function" then
+    local ok, v = pcall(function() return g_crypt.getMachineUUID() end)
+    if ok then return trim(v) end
+  end
+  if modules and modules.corelib and modules.corelib.g_crypt and type(modules.corelib.g_crypt.getMachineUUID) == "function" then
+    local ok, v = pcall(function() return modules.corelib.g_crypt.getMachineUUID() end)
+    if ok then return trim(v) end
+  end
+  return ""
+end
+
+local function getAllMACs()
+  local out = {}
+
+  local gp = nil
+  if g_platform and type(g_platform.getMacAddresses) == "function" then
+    gp = g_platform
+  elseif modules and modules.client and modules.client.g_platform and type(modules.client.g_platform.getMacAddresses) == "function" then
+    gp = modules.client.g_platform
+  end
+  if not gp then return out end
+
+  local ok, list = pcall(function() return gp.getMacAddresses() end)
+  if not ok or type(list) ~= "table" then return out end
+
+  local seen = {}
+  for _, mac in ipairs(list) do
+    local n = normalizeMAC(mac)
+    if n ~= "" and not seen[n] then
+      seen[n] = true
+      out[#out+1] = n
+    end
+  end
+  return out
+end
+
+-- =========================
+-- Revogado: botão copiar UUID/MAC
+-- =========================
+local revokePanel = nil
+
+local function joinLines(t)
+  local out = {}
+  for i = 1, #t do out[#out+1] = tostring(t[i]) end
+  return table.concat(out, "\n")
+end
+
+local function showUuidMacAndCopy()
+  local uuid = getUUID()
+  local macs = getAllMACs()
+
+  local msg = "UUID:\n" .. tostring(uuid ~= "" and uuid or "N/A") .. "\n\nMAC(s):\n"
+  if #macs > 0 then
+    msg = msg .. joinLines(macs)
+  else
+    msg = msg .. "N/A"
+  end
+
+  local copied = false
+  if g_window and type(g_window.setClipboardText) == "function" then
+    copied = pcall(function() g_window.setClipboardText(msg) end) == true
+  end
+
+  if copied then
+    gameMsg(MSG_PREFIX .. "INFORMACOES COPIADAS. ENVIE NO DISCORD/WHATSAPP.")
+  else
+    gameMsg(MSG_PREFIX .. "NAO CONSEGUI COPIAR (sem clipboard). Veja console.")
+    print(msg)
+  end
+end
+
+local function ensureRevokedButton()
+  if revokePanel then return end
+
+  setDefaultTab("Main")
+  revokePanel = setupUI([[
+Panel
+  height: 20
+  margin-top: 2
+
+  Button
+    id: copyBtn
+    anchors.top: parent.top
+    anchors.left: parent.left
+    anchors.right: parent.right
+    height: 18
+    text: Copiar UUID/MAC
+    font: verdana-9px
+    image-source: /images/ui/button_rounded
+    image-color: #363636
+    color: #e6e6e6
+    $hover:
+      opacity: 0.90
+      color: green
+]])
+  if revokePanel and revokePanel.copyBtn then
+    revokePanel.copyBtn.onClick = function()
+      showUuidMacAndCopy()
+    end
+  end
+end
+
+local function destroyRevokedButton()
+  if revokePanel then
+    pcall(function() revokePanel:destroy() end)
+  end
+  revokePanel = nil
+end
+
+-- =========================
+-- GViz parse
+-- =========================
+local function cleanGVizResponse(resp)
+  resp = tostring(resp or "")
+  resp = resp:gsub("^%s*/%*O_o%*/%s*", "")
+  resp = resp:gsub("^%s*google%.visualization%.Query%.setResponse%(", "")
+  resp = resp:gsub("%)%s*;%s*$", "")
+  return resp
+end
+
+local function getCellValue(row, idx)
+  if not row or not row.c then return nil end
+  local cell = row.c[idx]
+  if not cell then return nil end
+  if cell.v ~= nil then return cell.v end
+  return nil
+end
+
+local function checkAuthorization(onDone)
+  local uuid = getUUID()
+  local macs = getAllMACs()
+
+  if uuid == "" or #macs == 0 then
+    if type(onDone) == "function" then onDone(false, "") end
+    return
+  end
+
+  if not modules or not modules.corelib or not modules.corelib.HTTP or type(modules.corelib.HTTP.get) ~= "function" then
+    if type(onDone) == "function" then onDone(false, "") end
+    return
+  end
+
+  if not json or type(json.decode) ~= "function" then
+    if type(onDone) == "function" then onDone(false, "") end
+    return
+  end
+
+  local cb = tostring(now or os.time())
+  local url = GOOGLE_SHEETS_BASE .. "&cb=" .. cb
+
+  modules.corelib.HTTP.get(url, function(resp, err)
+    if err or not resp then
+      if type(onDone) == "function" then
+        if FAILSAFE_REVOKE_ON_ERROR then onDone(false, "") else onDone(true, "") end
+      end
+      return
+    end
+
+    local clean = cleanGVizResponse(resp)
+
+    local ok, data = pcall(function() return json.decode(clean) end)
+    if not ok or not data or not data.table or type(data.table.rows) ~= "table" then
+      if type(onDone) == "function" then onDone(false, "") end
+      return
+    end
+
+    for _, row in ipairs(data.table.rows) do
+      -- mantendo o MESMO mapeamento do seu script original:
+      -- idx 1 = UUID, idx 2 = MAC, idx 3 = NOME
+      local sheetUUID = trim(getCellValue(row, 1))
+      local sheetMAC  = normalizeMAC(getCellValue(row, 2))
+      local sheetNAME = trim(getCellValue(row, 3))
+
+      if sheetUUID ~= "" and sheetUUID == uuid and sheetMAC ~= "" then
+        for i = 1, #macs do
+          if macs[i] == sheetMAC then
+            if type(onDone) == "function" then onDone(true, sheetNAME) end
+            return
+          end
+        end
+      end
+    end
+
+    if type(onDone) == "function" then onDone(false, "") end
+  end)
+end
+
+-- =========================
+-- LOADER (mem-only)
+-- =========================
+local memCache = {} -- [name] = code
+local pending = #files
+local started = false
+
+local function isUiReady()
+  if not g_game or type(g_game.isOnline) ~= "function" or not g_game:isOnline() then return false end
+  if not g_ui or type(g_ui.getRootWidget) ~= "function" then return false end
+  local root = g_ui.getRootWidget()
+  if not root then return false end
+  if root:recursiveGetChildById("gameRootPanel") then return true end
+  if root:recursiveGetChildById("gameInterface") then return true end
+  return false
+end
+
+local function runAllInOrder()
+  if started then return end
+  if pending > 0 then return end
+
+  if not isUiReady() then
+    later(100, runAllInOrder)
+    return
+  end
+
+  started = true
+
+  later(100, function()
+
+    for i = 1, #files do
+      local name = files[i]
+      local code = memCache[name]
+
+      if code and code ~= "" then
+        local fn, err = loadstring(code, "@" .. name .. ".lua")
+        if fn then
+          local okRun, runErr = pcall(fn)
+          if not okRun then
+            print(MSG_PREFIX .. "Erro executando " .. name .. ": " .. tostring(runErr))
+          end
+        else
+          print(MSG_PREFIX .. "loadstring erro em " .. name .. ": " .. tostring(err))
+        end
+      else
+        print(MSG_PREFIX .. "Falha/empty: " .. tostring(name))
+      end
+    end
+
+    for k in pairs(memCache) do memCache[k] = nil end
+
+  end)
+end
+
+local function fetchOne(name)
+  modules.corelib.HTTP.get(baseUrl .. name .. ".lua", function(script, err)
+    if not err and script and script ~= "" then
+      memCache[name] = script
+    else
+      memCache[name] = ""
+      print(MSG_PREFIX .. "Falha ao baixar: " .. tostring(name))
+    end
+
+    pending = pending - 1
+    runAllInOrder()
+  end)
+end
+
+local function startLoader()
+  for i = 1, #files do
+    fetchOne(files[i])
+  end
+  runAllInOrder()
+
+  -- Anti scriptsCache (apaga algumas vezes)
+  local tries = 0
+  local function wipeScriptsCache()
+    tries = tries + 1
+    if storage and storage.scriptsCache ~= nil then
+      storage.scriptsCache = nil
+    end
+    if tries < 50 then
+      later(200, wipeScriptsCache)
+    end
+  end
+  wipeScriptsCache()
+end
+
+-- =========================
+-- ENTRY: PROTECT -> LOADER
+-- =========================
+later(START_DELAY_MS, function()
+  gameMsg(MSG_PREFIX .. "Verificando autorizacao...")
+
+  checkAuthorization(function(ok, name)
+    storage[PANEL_NAME].authorized = ok == true
+    storage[PANEL_NAME].last = now
+    storage[PANEL_NAME].name = name or ""
+
+    if ok ~= true then
+      gameMsg(MSG_PREFIX .. "Acesso NAO autorizado, entre em contato via Discord/Whatsapp.")
+      ensureRevokedButton()
+      return
+    end
+
+    destroyRevokedButton()
+
+    local n = trim(name or "")
+    if n == "" then n = "jogador" end
+    gameMsg(MSG_PREFIX .. "Acesso autorizado! Bem-vindo " .. n .. ".")
+
+    later(100, function()
+      startLoader()
+    end)
+  end)
+end)
