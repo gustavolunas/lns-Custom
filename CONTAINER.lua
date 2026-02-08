@@ -5,7 +5,7 @@ local panelName = "renameContainers"
 if type(storage[panelName]) ~= "table" then
     storage[panelName] = {
         enabled = false;
-        height = 330,
+        height = 300,
         purse = true;
         list = {
             {
@@ -727,6 +727,7 @@ onContainerClose(function(container)
         mainLoop:setOn()
     end
 end)
+
 
 
 
