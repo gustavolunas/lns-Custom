@@ -1,3 +1,4 @@
+warning = function() end
 setDefaultTab("Main")
 
 local panelName = "codPanel"
@@ -137,3 +138,4 @@ local function updateButtonsBot()
 end
 
 updateButtonsBot()
+
