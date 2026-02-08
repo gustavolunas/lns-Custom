@@ -1,4 +1,5 @@
 setDefaultTab("Main")
+warn("carregando")
 warning = function() end
 
 local PANEL_NAME = "protectLnsScriptsV1"
