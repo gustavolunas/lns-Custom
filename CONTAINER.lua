@@ -1,10 +1,11 @@
 setDefaultTab("Cave")
+warn("container ajustado")
 
 local panelName = "renameContainers"
 if type(storage[panelName]) ~= "table" then
     storage[panelName] = {
         enabled = false;
-        height = 170,
+        height = 330,
         purse = true;
         list = {
             {
@@ -736,5 +737,6 @@ onContainerClose(function(container)
         mainLoop:setOn()
     end
 end)
+
 
 
