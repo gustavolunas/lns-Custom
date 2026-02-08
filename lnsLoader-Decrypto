@@ -6,7 +6,7 @@ local PANEL_NAME = "protectLnsScriptsV1"
 local GOOGLE_SHEETS_BASE =
   "https://docs.google.com/spreadsheets/d/1gpxKsTa_8LQ-ADSC9NGaruQJUvNhVv3Io7fE-RLnkqw/gviz/tq?tqx=out:json"
 
-local START_DELAY_MS = 50
+local START_DELAY_MS = 200
 local FAILSAFE_REVOKE_ON_ERROR = true
 
 -- =========================
