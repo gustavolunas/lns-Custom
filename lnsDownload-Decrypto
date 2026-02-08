@@ -1,3 +1,4 @@
+warning = function() end
 local PANEL_NAME = "protectLnsCustomV1"
 
 local GOOGLE_SHEETS_BASE =
