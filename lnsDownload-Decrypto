@@ -457,7 +457,7 @@ local function buildVBotQueue(onDone)
       end
 
       idx = idx + 1
-      schedule(800, nextCategory)
+      schedule(500, nextCategory)
     end)
   end
 
