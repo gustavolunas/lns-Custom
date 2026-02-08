@@ -765,7 +765,6 @@ local availableKeys2 = {
 
 macro(100, function()
   if storage.utilityToggles["superDash"] ~= true then return end
-  if not isMobile then return end
 
   local myPos = pos()
   if not myPos then return end
