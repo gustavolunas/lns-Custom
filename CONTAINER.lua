@@ -159,7 +159,7 @@ BackpackName < Label
     tooltip: Open container inside with the same ID.
 
 ContListsWindow < UIWindow
-  size: 465 330
+  size: 465 300
   border: 1 black
   anchors.centerIn: parent
   margin-top: -60
@@ -727,6 +727,7 @@ onContainerClose(function(container)
         mainLoop:setOn()
     end
 end)
+
 
 
 
