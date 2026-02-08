@@ -1,5 +1,5 @@
 setDefaultTab("Main")
-warn("ATT FEITA")
+
 local PANEL_NAME = "protectLnsScriptsV1"
 
 local GOOGLE_SHEETS_BASE =
