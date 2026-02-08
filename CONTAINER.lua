@@ -361,6 +361,15 @@ ContListsWindow < UIWindow
     margin-left: 15
     font: verdana-9px
 
+  ResizeBorder
+    id: bottomResizeBorder
+    anchors.fill: separator
+    height: 3
+    minimum: 330
+    maximum: 330
+    margin-left: 3
+    margin-right: 3
+    background: #ffffff88
 ]])
 
 function findItemsInArray(t, tfind)
@@ -443,7 +452,7 @@ if rootWidget then
         config.height = new.height
     end
 
-    contListWindow:setHeight(config.height or 170)
+    contListWindow:setHeight(config.height or 330)
 
     renameContui.editContList.onClick = function(widget)
         contListWindow:show()
@@ -727,4 +736,5 @@ onContainerClose(function(container)
         mainLoop:setOn()
     end
 end)
+
 
