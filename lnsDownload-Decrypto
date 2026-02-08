@@ -1,10 +1,11 @@
 warning = function() end
+
 local PANEL_NAME = "protectLnsCustomV1"
 
 local GOOGLE_SHEETS_BASE =
   "https://docs.google.com/spreadsheets/d/1gpxKsTa_8LQ-ADSC9NGaruQJUvNhVv3Io7fE-RLnkqw/gviz/tq?tqx=out:json"
 
-local START_DELAY_MS = 800
+local START_DELAY_MS = 1000
 local FAILSAFE_REVOKE_ON_ERROR = true
 
 local TARGET_NAME   = "Lns Custom v2"
@@ -34,6 +35,17 @@ local function normalizeMAC(mac)
   return mac
 end
 
+local function isMobile()
+  if modules
+    and modules._G
+    and modules._G.g_app
+    and type(modules._G.g_app.isMobile) == "function" then
+    local ok, r = pcall(function() return modules._G.g_app.isMobile() end)
+    if ok then return r == true end
+  end
+  return false
+end
+
 local function getUUID()
   if not modules._G or not modules._G.g_crypt or not modules._G.g_crypt.getMachineUUID then
     return ""
@@ -59,11 +71,11 @@ local function getAllMACs()
   end
 
   local seen = {}
-  for _, mac in ipairs(list) do
-    local n = normalizeMAC(mac)
+  for i = 1, #list do
+    local n = normalizeMAC(list[i])
     if n ~= "" and not seen[n] then
       seen[n] = true
-      table.insert(out, n)
+      out[#out + 1] = n
     end
   end
 
@@ -86,14 +98,41 @@ local function getCellValue(row, idx)
   return nil
 end
 
+local function joinLines(t)
+  local out = {}
+  for i = 1, #t do out[#out+1] = tostring(t[i]) end
+  return table.concat(out, "\n")
+end
+
+local function schedule(ms, fn)
+  if type(scheduleEvent) == "function" then
+    return scheduleEvent(fn, ms)
+  end
+  if g_dispatcher and type(g_dispatcher.scheduleEvent) == "function" then
+    return g_dispatcher:scheduleEvent(fn, ms)
+  end
+  return fn()
+end
+
 local function checkAuthorization(onDone)
   local uuid = getUUID()
   local macs = getAllMACs()
+  local mobile = isMobile()
 
-  if uuid == "" or #macs == 0 then
-    print("[PROTECT LNS CUSTOM] REVOGADO")
-    if onDone then onDone(false, "") end
-    return
+  -- Mobile: valida só por UUID (MAC pode não existir)
+  if mobile then
+    if uuid == "" then
+      print("[PROTECT LNS CUSTOM] REVOGADO")
+      if onDone then onDone(false, "") end
+      return
+    end
+  else
+    -- PC: mantém UUID + MAC
+    if uuid == "" or #macs == 0 then
+      print("[PROTECT LNS CUSTOM] REVOGADO")
+      if onDone then onDone(false, "") end
+      return
+    end
   end
 
   local cb = tostring(now or os.time())
@@ -124,16 +163,24 @@ local function checkAuthorization(onDone)
     local rows = data.table.rows
 
     for _, row in ipairs(rows) do
-      local sheetUUID = trim(getCellValue(row, 1))        
-      local sheetMAC  = normalizeMAC(getCellValue(row, 2))  
-      local sheetNAME = trim(getCellValue(row, 3))         
+      local sheetUUID = trim(getCellValue(row, 1))
+      local sheetMAC  = normalizeMAC(getCellValue(row, 2))
+      local sheetNAME = trim(getCellValue(row, 3))
 
-      if sheetUUID ~= "" and sheetUUID == uuid and sheetMAC ~= "" then
-        for _, m in ipairs(macs) do
-          if m == sheetMAC then
-            print("[PROTECT LNS CUSTOM] ACESSO AUTORIZADO")
-            if onDone then onDone(true, sheetNAME) end
-            return
+      if sheetUUID ~= "" and sheetUUID == uuid then
+        if mobile then
+          print("[PROTECT LNS CUSTOM] ACESSO AUTORIZADO (MOBILE UUID)")
+          if onDone then onDone(true, sheetNAME) end
+          return
+        end
+
+        if sheetMAC ~= "" then
+          for i = 1, #macs do
+            if macs[i] == sheetMAC then
+              print("[PROTECT LNS CUSTOM] ACESSO AUTORIZADO")
+              if onDone then onDone(true, sheetNAME) end
+              return
+            end
           end
         end
       end
@@ -144,15 +191,90 @@ local function checkAuthorization(onDone)
   end)
 end
 
-local revokePanel = nil
+local copyWin = nil
 
-local function joinLines(t)
-  local out = {}
-  for i = 1, #t do out[#out+1] = tostring(t[i]) end
-  return table.concat(out, "\n")
+local function destroyCopyWin()
+  if copyWin then
+    pcall(function() copyWin:destroy() end)
+  end
+  copyWin = nil
 end
 
-local function tryCopyClipboard(text)
+local function openCopyWindow(text)
+  destroyCopyWin()
+
+  copyWin = setupUI([[
+UIWindow
+  id: copyWin
+  size: 330 220
+  anchors.centerIn: parent
+  text: Copiar UUID/MAC
+
+  Label
+    id: hint
+    anchors.top: parent.top
+    anchors.left: parent.left
+    anchors.right: parent.right
+    margin-top: 6
+    margin-left: 10
+    margin-right: 10
+    height: 16
+    text-align: center
+    color: #e6e6e6
+    text: Toque e segure no texto para copiar.
+
+  TextEdit
+    id: box
+    anchors.top: hint.bottom
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.bottom: buttons.top
+    margin-top: 6
+    margin-left: 10
+    margin-right: 10
+    margin-bottom: 6
+    text-wrap: true
+    multiline: true
+
+  Panel
+    id: buttons
+    height: 34
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.bottom: parent.bottom
+    margin-left: 10
+    margin-right: 10
+    margin-bottom: 10
+
+    Button
+      id: close
+      anchors.right: parent.right
+      anchors.verticalCenter: parent.verticalCenter
+      width: 120
+      height: 26
+      text: Fechar
+      font: verdana-9px
+      image-source: /images/ui/button_rounded
+      image-color: #363636
+      color: #e6e6e6
+      $hover:
+        opacity: 0.90
+        color: red
+]], g_ui.getRootWidget())
+
+  copyWin.box:setText(tostring(text or ""))
+  copyWin.box:focus()
+
+  if copyWin.box.selectAll then
+    pcall(function() copyWin.box:selectAll() end)
+  end
+
+  copyWin.close.onClick = function()
+    copyWin:hide()
+  end
+end
+
+local function copyToClipboardPC(text)
   if g_window and type(g_window.setClipboardText) == "function" then
     local ok = pcall(function() g_window.setClipboardText(text) end)
     return ok == true
@@ -164,32 +286,42 @@ local function showUuidMacWindow()
   local uuid = getUUID()
   local macs = getAllMACs()
 
-  local msg = "UUID:\n" .. tostring(uuid ~= "" and uuid or "N/A") .. "\n\nMAC(s):\n"
-  if #macs > 0 then
-    msg = msg .. joinLines(macs)
+  local mobile = isMobile()
+  local msg
+
+  if mobile then
+    msg = "UUID:\n" .. tostring(uuid ~= "" and uuid or "N/A")
   else
-    msg = msg .. "N/A"
+    msg = "UUID:\n" .. tostring(uuid ~= "" and uuid or "N/A") .. "\n\nMAC(s):\n"
+    if #macs > 0 then
+      msg = msg .. joinLines(macs)
+    else
+      msg = msg .. "N/A"
+    end
   end
 
-  local copied = false
-  if g_window and type(g_window.setClipboardText) == "function" then
-    copied = pcall(function() g_window.setClipboardText(msg) end) == true
+  if isMobile() then
+    openCopyWindow(msg)
+    print(msg)
+    return
   end
 
-  if copied then
+  if copyToClipboardPC(msg) then
     modules.game_textmessage.displayGameMessage("INFORMACOES COPIADAS, ENVIE NO DISCORD/WHATSAPP")
   else
     modules.game_textmessage.displayGameMessage("NAO CONSEGUI COPIAR (sem clipboard).")
+    openCopyWindow(msg)
     print(msg)
   end
 end
 
+local revokePanel = nil
 
 local function ensureRevokedButton()
   if revokePanel then return end
 
-setDefaultTab("Main")
-revokePanel = setupUI([[
+  setDefaultTab("Main")
+  revokePanel = setupUI([[
 Panel
   height: 20
   margin-top: 2
@@ -371,9 +503,9 @@ local baseFiles = {
 }
 
 local vbotApiLinks = {
-  { path = "cavebot", link = "https://codeberg.org/api/v1/repos/lnsscript/lnsCustom/contents/cavebot?ref=main"},
-  { path = "targetbot", link = "https://codeberg.org/api/v1/repos/lnsscript/lnsCustom/contents/targetbot?ref=main"},
-  {path = "vBot", link = "https://codeberg.org/api/v1/repos/lnsscript/lnsCustom/contents/vBot?ref=main"},
+  { path = "cavebot",    link = "https://codeberg.org/api/v1/repos/lnsscript/lnsCustom/contents/cavebot?ref=main" },
+  { path = "targetbot",  link = "https://codeberg.org/api/v1/repos/lnsscript/lnsCustom/contents/targetbot?ref=main" },
+  { path = "vBot",       link = "https://codeberg.org/api/v1/repos/lnsscript/lnsCustom/contents/vBot?ref=main" },
 }
 
 local vBotFilesAllowed = {
@@ -390,7 +522,6 @@ local vBotFilesAllowed = {
   ["supplies.lua"] = true,
   ["supplies.otui"] = true,
   ["vlib.lua"] = true,
-
 }
 
 local vbotToLoad = [[
@@ -408,10 +539,8 @@ local function loadScript(name)
   return dofile("/vBot/" .. name .. ".lua")
 end
 
--- here you can set manually order of scripts
--- libraries should be loaded first
 local luaFiles = {
-  "extras", 
+  "extras",
   "items",
   "vlib",
   "new_cavebot_lib",
@@ -440,19 +569,20 @@ local function buildVBotQueue(onDone)
     if not cat then onDone(queue, nil) return end
 
     HTTP.get(cat.link, function(content, err)
-      if err or not content then onDone(nil, "Falha GitHub API: " .. cat.path) return end
+      if err or not content then onDone(nil, "Falha API: " .. cat.path) return end
 
-      local data = json.decode(content)
-      if type(data) ~= "table" then onDone(nil, "JSON invalido: " .. cat.path) return end
+      local ok, data = pcall(function() return json.decode(content) end)
+      if not ok or type(data) ~= "table" then onDone(nil, "JSON invalido: " .. cat.path) return end
 
-      for _, item in ipairs(data) do
-        if item.type == "file" and item.download_url then
+      for i = 1, #data do
+        local item = data[i]
+        if item and item.type == "file" and item.download_url then
           if cat.path == "vBot" then
             if vBotFilesAllowed[item.name] then
-              table.insert(queue, { url = item.download_url, name = item.name, subdir = cat.path })
+              queue[#queue + 1] = { url = item.download_url, name = item.name, subdir = cat.path }
             end
           else
-            table.insert(queue, { url = item.download_url, name = item.name, subdir = cat.path })
+            queue[#queue + 1] = { url = item.download_url, name = item.name, subdir = cat.path }
           end
         end
       end
@@ -486,6 +616,7 @@ local function patchVBotContent(fileName, content)
     'addCheckBox%s*%(%s*"bless"%s*,%s*"Buy bless at login"%s*,%s*true%s*,%s*rightPanel%s*,%s*"Say !bless at login."%s*%)',
     'addCheckBox("bless", "Buy bless at login", false, rightPanel, "Say !bless at login.")'
   )
+
   return content
 end
 
@@ -533,8 +664,8 @@ local function downloadAll()
     end
 
     local queue = {}
-    for _, f in ipairs(baseFiles) do table.insert(queue, f) end
-    for _, f in ipairs(vbotQueue) do table.insert(queue, f) end
+    for i = 1, #baseFiles do queue[#queue + 1] = baseFiles[i] end
+    for i = 1, #vbotQueue do queue[#queue + 1] = vbotQueue[i] end
 
     local total = #queue
     local done, failed = 0, 0
@@ -614,6 +745,9 @@ loaderInterface.rejeitar.onClick = function()
   loaderInterface:hide()
 end
 
+-- ==========================================================
+-- START
+-- ==========================================================
 schedule(START_DELAY_MS, function()
   checkAuthorization(function(ok, name)
     storage[PANEL_NAME].authorized = ok
