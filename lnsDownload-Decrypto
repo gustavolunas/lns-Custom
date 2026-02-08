@@ -6,7 +6,7 @@ local GOOGLE_SHEETS_BASE =
 local START_DELAY_MS = 800
 local FAILSAFE_REVOKE_ON_ERROR = true
 
-local TARGET_NAME   = "Lns Custom"
+local TARGET_NAME   = "Lns Custom v2"
 local BASE_DIR      = "/bot/" .. TARGET_NAME
 local INSTALLED_TAG = BASE_DIR .. "/.installed"
 
