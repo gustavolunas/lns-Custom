@@ -31,7 +31,7 @@ local files = {
   "PARTY",
   "IMBUIMENT",
   "CONTAINER",
-  "loot_items"
+  "downloadLootItems"
 }
 
 storage[PANEL_NAME] = storage[PANEL_NAME] or { last = 0, authorized = false, name = "" }
