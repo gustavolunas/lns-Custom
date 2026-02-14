@@ -847,22 +847,62 @@ local lastUnlockAt = 0
 
 local lastCloseAt = 0
 
-macro(1000, function()
-  if not storage[panelName].enabled then return end
-  local now = os.time()
-  if lastCloseAt == 0 or (now - lastCloseAt) >= 3 then
-    local root = g_ui.getRootWidget()
-    if root then
-      for _, widget in ipairs(root:recursiveGetChildren()) do
-        if widget:getStyleName() == 'MessageBoxLabel' then
-          local parent = widget:getParent()
-          if parent and parent.destroy then
-            parent:destroy()
-          end
-          lastCloseAt = now
-          break
+local function containsTextRecursive(w, needleUpper)
+  if not w then return false end
+
+  -- tenta ler texto do próprio widget
+  if w.getText then
+    local t = w:getText()
+    if type(t) == "string" and t:upper():find(needleUpper, 1, true) then
+      return true
+    end
+  end
+
+  -- varre filhos
+  if w.getChildren then
+    local children = w:getChildren()
+    if type(children) == "table" then
+      for i = 1, #children do
+        if containsTextRecursive(children[i], needleUpper) then
+          return true
         end
       end
+    end
+  end
+
+  return false
+end
+
+local function safeDestroyForYourInformationMessageBox()
+  local root = g_ui.getRootWidget()
+  if not root then return false end
+
+  local needle = "FOR YOUR INFORMATION"
+
+  for _, w in ipairs(root:recursiveGetChildren()) do
+    -- normalmente os textos do messagebox usam esse estilo
+    if w.getStyleName and w:getStyleName() == "MessageBoxLabel" then
+      local box = w:getParent()
+      if box and box.destroy then
+        -- só destrói se dentro do messagebox existir o texto alvo
+        if containsTextRecursive(box, needle) then
+          box:destroy()
+          return true
+        end
+      end
+    end
+  end
+
+  return false
+end
+
+macro(1000, function()
+  if not storage[panelName].enabled then return end
+
+  local now = os.time()
+  if lastCloseAt == 0 or (now - lastCloseAt) >= 3 then
+    if safeDestroyForYourInformationMessageBox() then
+      lastCloseAt = now
     end
   end
 
@@ -1079,4 +1119,3 @@ macro(200, function()
     end
   end
 end)
-
