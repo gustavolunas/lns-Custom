@@ -1,4 +1,5 @@
 setDefaultTab("Main")
+warn("ICONS ATUALIZADO")
 
 local function later(ms, fn)
   if type(schedule) == "function" then
