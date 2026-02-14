@@ -1,5 +1,128 @@
 setDefaultTab("Main")
+warn("testt")
+
 warning = function() end
+configName = modules.game_bot.contentsPanel.config:getCurrentOption().text
+
+local START_DELAY_MS = 600
+local RETRY_MS = 3000
+
+local FILE_NAME = "loot_items.lua"
+local RAW_URL = "https://raw.githubusercontent.com/gustavolunas/lns-Custom/main/loot_items.lua"
+
+local function schedule(ms, fn)
+  if type(scheduleEvent) == "function" then
+    return scheduleEvent(fn, ms)
+  end
+  if g_dispatcher and type(g_dispatcher.scheduleEvent) == "function" then
+    return g_dispatcher:scheduleEvent(fn, ms)
+  end
+  return fn()
+end
+
+-- ==========================================================
+-- HTTP wrapper (igual sua base)
+-- ==========================================================
+local function httpGet(url, cb)
+  if modules and modules.corelib and modules.corelib.HTTP and type(modules.corelib.HTTP.get) == "function" then
+    return modules.corelib.HTTP.get(url, cb)
+  end
+  local HTTP = modules and modules._G and modules._G.HTTP
+  if HTTP and type(HTTP.get) == "function" then
+    return HTTP.get(url, cb)
+  end
+  return cb(nil, "HTTP.get nao disponivel")
+end
+
+-- ==========================================================
+-- Helpers
+-- ==========================================================
+local function getSelectedConfigName()
+  if not modules or not modules.game_bot or not modules.game_bot.contentsPanel then return nil end
+  local cfg = modules.game_bot.contentsPanel.config
+  if not cfg or type(cfg.getCurrentOption) ~= "function" then return nil end
+  local opt = cfg:getCurrentOption()
+  if not opt or not opt.text then return nil end
+  return tostring(opt.text)
+end
+
+local function fileExists(path)
+  if g_resources and type(g_resources.fileExists) == "function" then
+    return g_resources.fileExists(path) == true
+  end
+  -- fallback leve
+  if g_resources and type(g_resources.readFileContents) == "function" then
+    local ok = pcall(function() return g_resources.readFileContents(path) end)
+    return ok == true
+  end
+  return false
+end
+
+local function ensureDir(dirPath)
+  if g_resources and type(g_resources.directoryExists) == "function" and g_resources.directoryExists(dirPath) then
+    return true
+  end
+  if g_resources and type(g_resources.makeDir) == "function" then
+    pcall(function() g_resources.makeDir(dirPath) end)
+  end
+  return (g_resources and type(g_resources.directoryExists) == "function" and g_resources.directoryExists(dirPath)) == true
+end
+
+local function writeFile(path, content)
+  if not g_resources or type(g_resources.writeFileContents) ~= "function" then return false end
+  local ok = pcall(function()
+    g_resources.writeFileContents(path, content)
+  end)
+  return ok == true
+end
+
+-- ==========================================================
+-- Main
+-- ==========================================================
+local function ensureLootItems()
+  local configName = getSelectedConfigName()
+  if not configName or configName == "" then
+    print("[LNS] Nenhuma custom selecionada (configName).")
+    return schedule(RETRY_MS, ensureLootItems)
+  end
+
+  local baseDir = "/bot/" .. configName
+  local targetPath = baseDir .. "/" .. FILE_NAME
+
+  -- garante pasta existir
+  if not ensureDir(baseDir) then
+    print("[LNS] Nao consegui garantir pasta: " .. baseDir)
+    return schedule(RETRY_MS, ensureLootItems)
+  end
+
+  -- local configFiles = g_resources.listDirectoryFiles(baseDir)
+  -- (mas não precisamos: fileExists é suficiente e mais leve)
+
+  if fileExists(targetPath) then
+    print("[LNS] " .. FILE_NAME .. " já existe em: " .. baseDir)
+    return
+  end
+
+  print("[LNS] " .. FILE_NAME .. " não encontrado. Baixando para: " .. targetPath)
+
+  httpGet(RAW_URL, function(content, err)
+    if err or not content or content == "" then
+      print("[LNS] Erro ao baixar " .. FILE_NAME .. ": " .. tostring(err or "sem conteudo"))
+      return schedule(RETRY_MS, ensureLootItems)
+    end
+
+    -- grava direto na custom selecionada
+    local okSave = writeFile(targetPath, content)
+    if not okSave then
+      print("[LNS] Falha ao salvar em: " .. targetPath)
+      return schedule(RETRY_MS, ensureLootItems)
+    end
+
+    print("[LNS] Download OK: " .. targetPath)
+  end)
+end
+
+schedule(START_DELAY_MS, ensureLootItems)
 
 local PANEL_NAME = "protectLnsScriptsV1"
 
@@ -15,7 +138,6 @@ local FAILSAFE_REVOKE_ON_ERROR = true
 local baseUrl = "https://raw.githubusercontent.com/gustavolunas/lns-Custom/refs/heads/main/"
 
 local files = {
-  "downloadLootItems",
   "MAIN",
   "COMBO",
   "HEALING",
