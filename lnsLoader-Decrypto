@@ -1,6 +1,4 @@
 setDefaultTab("Main")
-warn("testt")
-
 warning = function() end
 configName = modules.game_bot.contentsPanel.config:getCurrentOption().text
 
