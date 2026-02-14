@@ -1,11 +1,5 @@
 warning = function() end
-
--- =========================================
--- LNS - Ensure loot_items.lua in selected custom
--- - Verifica se existe /bot/<configName>/loot_items.lua
--- - Se não existir: baixa via HTTP.get (RAW) e grava com writeFileContents
--- - Retry em caso de erro
--- =========================================
+configName = modules.game_bot.contentsPanel.config:getCurrentOption().text
 
 local START_DELAY_MS = 600
 local RETRY_MS = 3000
@@ -13,9 +7,6 @@ local RETRY_MS = 3000
 local FILE_NAME = "loot_items.lua"
 local RAW_URL = "https://raw.githubusercontent.com/gustavolunas/lns-Custom/main/loot_items.lua"
 
--- ==========================================================
--- schedule wrapper (igual seu estilo)
--- ==========================================================
 local function schedule(ms, fn)
   if type(scheduleEvent) == "function" then
     return scheduleEvent(fn, ms)
@@ -114,14 +105,14 @@ local function ensureLootItems()
 
   httpGet(RAW_URL, function(content, err)
     if err or not content or content == "" then
-      print("[LNS] Erro ao baixar " .. FILE_NAME .. ": " .. tostring(err or "sem conteudo"))
+      warn("[LNS] Erro ao baixar " .. FILE_NAME .. ": " .. tostring(err or "sem conteudo"))
       return schedule(RETRY_MS, ensureLootItems)
     end
 
     -- grava direto na custom selecionada
     local okSave = writeFile(targetPath, content)
     if not okSave then
-      print("[LNS] Falha ao salvar em: " .. targetPath)
+      warn("[LNS] Falha ao salvar em: " .. targetPath)
       return schedule(RETRY_MS, ensureLootItems)
     end
 
