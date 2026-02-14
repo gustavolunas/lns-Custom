@@ -1,8 +1,5 @@
 setDefaultTab("Main")
 
--- -------------------------
--- Helpers (schedule safe)
--- -------------------------
 local function later(ms, fn)
   if type(schedule) == "function" then
     return schedule(ms, fn)
@@ -17,8 +14,21 @@ local function later(ms, fn)
 end
 
 local function nowMillis()
-  if g_clock and type(g_clock.millis) == "function" then return g_clock.millis() end
-  if now then return now end
+  if g_clock and type(g_clock.millis) == "function" then
+    return g_clock.millis()
+  end
+  if g_clock and type(g_clock.seconds) == "function" then
+    return math.floor(g_clock.seconds() * 1000)
+  end
+  if type(now) == "number" then
+    return now
+  end
+  if os and os.clock then
+    return math.floor(os.clock() * 1000)
+  end
+  if os and os.time then
+    return os.time() * 1000
+  end
   return 0
 end
 
@@ -50,9 +60,6 @@ local function normalizeText(s)
   return s
 end
 
--- -------------------------
--- Config name
--- -------------------------
 local MyConfigName = "default"
 if modules and modules.game_bot and modules.game_bot.contentsPanel
   and modules.game_bot.contentsPanel.config
@@ -63,26 +70,24 @@ if modules and modules.game_bot and modules.game_bot.contentsPanel
   end
 end
 
--- -------------------------
--- DB por config
--- -------------------------
 storage.lnsIconsDB = storage.lnsIconsDB or {}
 storage.lnsIconsDB[MyConfigName] = storage.lnsIconsDB[MyConfigName] or {
   enabled = false,
-  iconConfig = {},     -- show_xxx
-  icons = {},          -- posições { [id] = {x=0..1,y=0..1} }
-  status = {},         -- status ON/OFF { [id] = true/false }
-  items = {}           -- [id] = itemId
+  iconConfig = {},   
+  icons = {},         
+  status = {},       
+  items = {},      
+  modes = {},         
+  outfits = {}         
 }
 local db = storage.lnsIconsDB[MyConfigName]
 db.iconConfig = db.iconConfig or {}
 db.icons      = db.icons      or {}
 db.status     = db.status     or {}
 db.items      = db.items      or {}
+db.modes      = db.modes      or {}
+db.outfits    = db.outfits    or {}
 
--- -------------------------
--- Apply relative position
--- -------------------------
 local function applyRelativePos(widget, cfg)
   if not widget or not cfg then return end
   local parent = widget:getParent()
@@ -96,9 +101,6 @@ local function applyRelativePos(widget, cfg)
   widget:setMarginLeft(w * (-0.5 + (cfg.x or 0)))
 end
 
--- -------------------------
--- BotItem extract id
--- -------------------------
 local function extractItemId(a, b, c)
   local function fromAny(x)
     if type(x) == "number" then return x end
@@ -126,6 +128,13 @@ local function applyIconItem(iconWidget, itemId)
   if not iconWidget or not iconWidget.item then return end
   itemId = tonumber(itemId) or 0
 
+  if iconWidget.creature and iconWidget.creature.setVisible then
+    iconWidget.creature:setVisible(false)
+  end
+  if iconWidget.item and iconWidget.item.setVisible then
+    iconWidget.item:setVisible(true)
+  end
+
   if iconWidget.item.setItemId then
     iconWidget.item:setItemId(itemId)
     return
@@ -145,9 +154,91 @@ local function applyIconItem(iconWidget, itemId)
   end
 end
 
--- -------------------------
--- addIcone (map icon)
--- -------------------------
+local function makeOutfitById(id)
+  id = tonumber(id) or 0
+  return {
+    mount = 0,
+    feet = 0,
+    legs = 0,
+    body = id,
+    type = id,
+    auxType = 0,
+    addons = 3,
+    head = 0
+  }
+end
+
+local function applyIconOutfit(iconWidget, outfitId)
+  outfitId = tonumber(outfitId) or 0
+  if not iconWidget then return end
+
+  if iconWidget.item and iconWidget.item.setVisible then
+    iconWidget.item:setVisible(false)
+  end
+  if iconWidget.creature and iconWidget.creature.setVisible then
+    iconWidget.creature:setVisible(true)
+  end
+
+  if iconWidget.creature and iconWidget.creature.setOutfit then
+    pcall(function()
+      iconWidget.creature:setOutfit(makeOutfitById(outfitId))
+    end)
+    return
+  end
+
+  applyIconItem(iconWidget, 0)
+end
+
+local function clearRowCreaturePick(creaturePick)
+  if not creaturePick then return end
+  if creaturePick.setVisible then creaturePick:setVisible(true) end
+end
+
+local function setRowCreaturePick(creaturePick, outfitId)
+  if not creaturePick then return end
+  if creaturePick.setVisible then creaturePick:setVisible(true) end
+
+  local o = nil
+  if player and player.getOutfit then
+    local ok, base = pcall(function() return player:getOutfit() end)
+    if ok and type(base) == "table" then
+      base.type = tonumber(outfitId) or 0
+      base.addons = 3
+      o = base
+    end
+  end
+  o = o or makeOutfitById(outfitId)
+
+  if creaturePick.setOutfit then
+    pcall(function() creaturePick:setOutfit(o) end)
+  end
+end
+
+local function setRowItemPick(itemPick, itemId)
+  if not itemPick then return end
+  itemId = tonumber(itemId) or 0
+
+  if itemPick.setItemId then
+    itemPick:setItemId(itemId)
+    return
+  end
+
+  if itemPick.setItem and Item and Item.create then
+    if itemId > 0 then
+      itemPick:setItem(Item.create(itemId))
+    else
+      itemPick:setItem(nil)
+    end
+  end
+end
+
+local function setRowItemPickBlocked(itemPick, itemId)
+  if not itemPick then return end
+  itemPick._lnsBlockPick = true
+  setRowItemPick(itemPick, itemId)
+  itemPick._lnsBlockPick = false
+end
+
 local iconsWithoutPosition = 0
 
 local function addIcone(id, options, onPosChanged)
@@ -167,15 +258,29 @@ local function addIcone(id, options, onPosChanged)
   w.botWidget = true
   w.botIcon = true
 
-  -- item
-  local savedItem = tonumber(db.items[id])
-  if savedItem == nil then
-    savedItem = tonumber(options.defaultItemId) or 0
-    db.items[id] = savedItem
+  local savedMode = db.modes[id]
+  if savedMode ~= "item" and savedMode ~= "outfit" then
+    savedMode = (options.defaultMode == "outfit") and "outfit" or "item"
+    db.modes[id] = savedMode
   end
-  applyIconItem(w, savedItem)
 
-  -- status saved
+  if savedMode == "outfit" then
+    local oId = tonumber(db.outfits[id]) or 0
+    if oId <= 0 then
+      oId = tonumber(options.defaultOutfitId) or 0
+      db.outfits[id] = oId
+    end
+    db.items[id] = 0
+    applyIconOutfit(w, oId)
+  else
+    local savedItem = tonumber(db.items[id])
+    if savedItem == nil then
+      savedItem = tonumber(options.defaultItemId) or 0
+      db.items[id] = savedItem
+    end
+    applyIconItem(w, savedItem)
+  end
+
   w.status:show()
   local savedStatus = db.status[id]
   if savedStatus == nil then
@@ -183,7 +288,6 @@ local function addIcone(id, options, onPosChanged)
   end
   w.status:setOn(savedStatus == true)
 
-  -- text below
   if options.text then
     w.text:setText(options.text)
     w.text:setFont("verdana-9px")
@@ -201,7 +305,6 @@ local function addIcone(id, options, onPosChanged)
     applyRelativePos(widget, cfg)
   end
 
-  -- default click toggles status (can be overridden by binds)
   w.onClick = function()
     local newState = not w.status:isOn()
     w.status:setOn(newState)
@@ -252,9 +355,6 @@ local function addIcone(id, options, onPosChanged)
   return w, cfg
 end
 
--- -------------------------
--- Row template (check + botitem + text + x/y)
--- -------------------------
 local rowTemplate = [[
 UIWidget
   id: root
@@ -286,11 +386,37 @@ UIWidget
     anchors.verticalCenter: parent.verticalCenter
     margin-left: 6
     width: 18
+    image-source: /images/ui/item-blessed
     height: 18
+
+  UICreature
+    id: creaturePick
+    anchors.left: prev.right
+    anchors.verticalCenter: parent.verticalCenter
+    margin-left: 6
+    background-color: #00000055
+    image-source: /images/ui/item-blessed
+    visible: true
+    width: 18
+    height: 18
+
+  Button
+    id: listaIds
+    anchors.verticalCenter: parent.verticalCenter
+    anchors.left: prev.right
+    margin-left: 3
+    text-offset: 0 -2
+    text: L
+    tooltip: Lista de Outfits/Items
+    image-color: #828282
+    font: verdana-9px
+    width: 18
+    height: 18
+    image-source: /images/ui/button_rounded
 
   Label
     id: text
-    anchors.left: itemPick.right
+    anchors.left: listaIds.right
     anchors.verticalCenter: parent.verticalCenter
     margin-left: 6
     width: 127
@@ -337,9 +463,438 @@ UIWidget
     text: "0"
 ]]
 
--- -------------------------
--- Base UI (button + window)
--- -------------------------
+local idPicker = {
+  win = nil,
+  itemList = nil,
+  pageLabel = nil,
+  btnBack = nil,
+  btnNext = nil,
+  btnClose = nil,
+  btnOut = nil,
+  btnIt = nil,
+
+  target = nil, -- { iconId=..., iconWidget=..., row={itemPick=..., creaturePick=...} }
+
+  view = "items",
+  lootList = {},
+  itemIndex = 1,
+
+  outfitFirst = 1,
+  outfitLast = 1904,
+  outfitPage = 1,
+
+  pageSize = 95
+}
+
+local function idPicker_safeRead(path)
+  if not g_resources or type(g_resources.readFileContents) ~= "function" then
+    return nil, "g_resources.readFileContents não existe"
+  end
+  local ok, content = pcall(function() return g_resources.readFileContents(path) end)
+  if not ok then return nil, content end
+  if not content or content == "" then return nil, "vazio" end
+  return content, nil
+end
+
+local function idPicker_loadLootItems()
+  local cfgName = (type(MyConfigName) == "string" and MyConfigName ~= "" and MyConfigName) or "CUSTOM"
+  local path1 = "/bot/" .. cfgName .. "/loot_items.lua"
+  local path2 = "/bot/" .. cfgName .. "/loot_items"
+  local path3 = "loot_items.lua"
+
+  local content, err = idPicker_safeRead(path1)
+  if not content then content, err = idPicker_safeRead(path2) end
+  if not content then content, err = idPicker_safeRead(path3) end
+
+  if not content then
+    warn("ID Picker: não achei loot_items.lua em: " .. path1)
+    warn("ID Picker: erro/leitura: " .. tostring(err))
+    return {}
+  end
+
+  local list, seen, n = {}, {}, 0
+  for name, idStr in content:gmatch('%["(.-)"%]%s*=%s*(%d+)') do
+    local id = tonumber(idStr)
+    if id and not seen[id] then
+      seen[id] = true
+      n = n + 1
+      list[n] = { name = tostring(name), id = id }
+    end
+  end
+
+  table.sort(list, function(a,b) return (a.id or 0) < (b.id or 0) end)
+  return list
+end
+
+local function idPicker_W(win, id)
+  if win and win.recursiveGetChildById then return win:recursiveGetChildById(id) end
+  if win and win.getChildById then return win:getChildById(id) end
+  return nil
+end
+
+local function idPicker_buildUI()
+  if idPicker.win then return end
+
+  g_ui.loadUIFromString([[
+IdPickerWindow < UIWindow
+  size: 690 520
+  @onEscape: self:hide()
+  anchors.centerIn: parent
+  margin-top: -60
+
+  Panel
+    id: background
+    anchors.fill: parent
+    background-color: black
+    opacity: 0.70
+
+  Panel
+    id: topPanel
+    anchors.top: parent.top
+    anchors.left: parent.left
+    anchors.right: parent.right
+    size: 120 30
+    text-align: center
+    !text: tr('LNS Custom | Lista de IDs')
+    color: orange
+    background-color: black
+
+  UIButton
+    id: closePanel
+    anchors.top: topPanel.top
+    anchors.right: parent.right
+    size: 18 18
+    margin-top: 6
+    margin-right: 10
+    background-color: orange
+    text: X
+    color: white
+    opacity: 1.00
+    $hover:
+      color: black
+      opacity: 0.80
+
+  Panel
+    id: topBar
+    height: 26
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.top: parent.top
+
+    Button
+      id: btnOutfits
+      !text: tr('OUTFITS')
+      font: verdana-9px
+      anchors.left: parent.left
+      anchors.top: parent.top
+      margin-left: 6
+      margin-top: 5
+      width: 90
+      height: 20
+      image-source: /images/ui/button_rounded
+      image-color: #363636
+
+    Button
+      id: btnItems
+      !text: tr('ITEMS')
+      font: verdana-9px
+      anchors.left: btnOutfits.right
+      anchors.top: parent.top
+      margin-left: 6
+      margin-top: 5
+      width: 90
+      height: 20
+      image-source: /images/ui/button_rounded
+      image-color: #363636
+
+  Panel
+    id: itemList
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.top: topBar.bottom
+    anchors.bottom: separator.top
+    margin-top: 5
+    margin-left: 9
+    layout:
+      type: grid
+      cell-size: 56 56
+      flow: true
+
+  HorizontalSeparator
+    id: separator
+    anchors.right: parent.right
+    anchors.left: parent.left
+    anchors.bottom: parent.bottom
+    margin-bottom: 25
+
+  Button
+    id: backButton
+    !text: tr('VOLTAR')
+    font: verdana-9px
+    anchors.left: parent.left
+    anchors.bottom: parent.bottom
+    image-source: /images/ui/button_rounded
+    image-color: #363636
+    margin-left: 10
+    width: 200
+
+  Label
+    id: page
+    text: 0/0
+    anchors.horizontalCenter: parent.horizontalCenter
+    anchors.left: prev.right
+    anchors.top: prev.top
+    width: 220
+    margin-top: 2
+    font: terminus-14px-bold
+    text-align: center
+
+  Button
+    id: nextButton
+    !text: tr('PROXIMA')
+    font: verdana-9px
+    margin-right: 10
+    anchors.left: page.right
+    anchors.bottom: parent.bottom
+    image-source: /images/ui/button_rounded
+    image-color: #363636
+    width: 200
+
+IdPickerEntry < UIWidget
+  size: 60 60
+  margin-left: 2
+  margin-top: 10
+
+  UICreature
+    id: creature
+    size: 40 40
+    phantom: true
+    anchors.horizontalCenter: parent.horizontalCenter
+    anchors.verticalCenter: parent.verticalCenter
+    background-color: #00000055
+    image-source: /images/ui/item-blessed
+    border: 1 alpha
+    $hover:
+      border: 2 white
+
+  Item
+    id: item
+    size: 40 40
+    phantom: false
+    anchors.horizontalCenter: parent.horizontalCenter
+    anchors.verticalCenter: parent.verticalCenter
+    image-source: /images/ui/item-blessed
+    padding: 5
+    border: 1 alpha
+    $hover:
+      border: 1 white
+  ]])
+
+  idPicker.win = UI.createWindow("IdPickerWindow", g_ui.getRootWidget())
+  idPicker.win:hide()
+
+  idPicker.itemList  = idPicker_W(idPicker.win, "itemList")
+  idPicker.pageLabel = idPicker_W(idPicker.win, "page")
+  idPicker.btnBack   = idPicker_W(idPicker.win, "backButton")
+  idPicker.btnNext   = idPicker_W(idPicker.win, "nextButton")
+  idPicker.btnClose  = idPicker_W(idPicker.win, "closePanel")
+  idPicker.btnOut    = idPicker_W(idPicker.win, "btnOutfits")
+  idPicker.btnIt     = idPicker_W(idPicker.win, "btnItems")
+
+  if idPicker.btnClose then
+    idPicker.btnClose.onClick = function()
+      if idPicker.win then idPicker.win:hide() end
+    end
+  end
+end
+
+local function idPicker_applyItem(itemId)
+  local t = idPicker.target
+  if not t or not t.iconId or not t.row or not t.iconWidget then return end
+
+  itemId = tonumber(itemId) or 0
+
+  db.modes[t.iconId] = "item"
+  db.items[t.iconId] = itemId
+  db.outfits[t.iconId] = nil
+
+  setRowItemPickBlocked(t.row.itemPick, itemId)
+  clearRowCreaturePick(t.row.creaturePick)
+  applyIconItem(t.iconWidget, itemId)
+
+  if idPicker.win then idPicker.win:hide() end
+end
+
+local function idPicker_applyOutfit(outfitId)
+  local t = idPicker.target
+  if not t or not t.iconId or not t.row or not t.iconWidget then return end
+
+  outfitId = tonumber(outfitId) or 0
+
+  db.modes[t.iconId] = "outfit"
+  db.outfits[t.iconId] = outfitId
+  db.items[t.iconId] = 0
+
+  setRowCreaturePick(t.row.creaturePick, outfitId)
+  setRowItemPickBlocked(t.row.itemPick, 0)
+  applyIconOutfit(t.iconWidget, outfitId)
+
+  if idPicker.win then idPicker.win:hide() end
+end
+
+local function idPicker_addOutfitCell(id)
+  local w = UI.createWidget("IdPickerEntry", idPicker.itemList)
+
+  w.item:setVisible(false)
+  w.creature:setVisible(true)
+  w.creature:setSize({ width = 50, height = 50 })
+
+  local base = nil
+  if player and player.getOutfit then
+    local ok, o = pcall(function() return player:getOutfit() end)
+    if ok and type(o) == "table" then base = o end
+  end
+  base = base or makeOutfitById(id)
+  base.type = id
+  base.addons = 3
+
+  pcall(function() w.creature:setOutfit(base) end)
+
+  w.onDoubleClick = function()
+    idPicker_applyOutfit(id)
+  end
+end
+
+local function idPicker_addItemCell(entry)
+  local id = entry.id
+  local name = entry.name or ""
+
+  local w = UI.createWidget("IdPickerEntry", idPicker.itemList)
+
+  w.creature:setVisible(false)
+  w.item:setVisible(true)
+
+  w.item:setSize({ width = 50, height = 50 })
+  w.item:setItemId(id)
+  w.item:setTooltip(name .. " (" .. id .. ")")
+
+  w.onDoubleClick = function()
+    idPicker_applyItem(id)
+  end
+end
+
+local function idPicker_render()
+  if not idPicker.itemList then return end
+  idPicker.itemList:destroyChildren()
+
+  if idPicker.view == "outfits" then
+    local fromId = idPicker.outfitPage
+    if fromId < idPicker.outfitFirst then fromId = idPicker.outfitFirst end
+    if fromId > idPicker.outfitLast then fromId = idPicker.outfitLast end
+
+    local toId = fromId + idPicker.pageSize
+    if toId > idPicker.outfitLast then toId = idPicker.outfitLast end
+
+    for i = fromId, toId do
+      idPicker_addOutfitCell(i)
+    end
+
+    if idPicker.pageLabel then
+      idPicker.pageLabel:setText(fromId .. " - " .. toId .. " / " .. idPicker.outfitLast)
+    end
+    return
+  end
+
+  local total = #idPicker.lootList
+  if total == 0 then
+    if idPicker.pageLabel then idPicker.pageLabel:setText("0/0") end
+    return
+  end
+
+  if idPicker.itemIndex < 1 then idPicker.itemIndex = 1 end
+  if idPicker.itemIndex > total then idPicker.itemIndex = total end
+
+  local toIndex = idPicker.itemIndex + idPicker.pageSize
+  if toIndex > total then toIndex = total end
+
+  for i = idPicker.itemIndex, toIndex do
+    local entry = idPicker.lootList[i]
+    if entry then idPicker_addItemCell(entry) end
+  end
+
+  if idPicker.pageLabel then
+    idPicker.pageLabel:setText(idPicker.itemIndex .. " - " .. toIndex .. " / " .. total)
+  end
+end
+
+local function idPicker_bindButtons()
+  if not idPicker.win then return end
+
+  if idPicker.btnOut then
+    idPicker.btnOut.onClick = function()
+      idPicker.view = "outfits"
+      idPicker_render()
+    end
+  end
+
+  if idPicker.btnIt then
+    idPicker.btnIt.onClick = function()
+      idPicker.view = "items"
+      idPicker.lootList = idPicker_loadLootItems()
+      idPicker_render()
+    end
+  end
+
+  if idPicker.btnBack then
+    idPicker.btnBack.onClick = function()
+      if idPicker.view == "outfits" then
+        idPicker.outfitPage = idPicker.outfitPage - idPicker.pageSize
+        if idPicker.outfitPage < idPicker.outfitFirst then idPicker.outfitPage = idPicker.outfitFirst end
+        idPicker_render()
+        return
+      end
+
+      idPicker.itemIndex = idPicker.itemIndex - idPicker.pageSize
+      if idPicker.itemIndex < 1 then idPicker.itemIndex = 1 end
+      idPicker_render()
+    end
+  end
+
+  if idPicker.btnNext then
+    idPicker.btnNext.onClick = function()
+      if idPicker.view == "outfits" then
+        idPicker.outfitPage = idPicker.outfitPage + idPicker.pageSize
+        if idPicker.outfitPage > idPicker.outfitLast then idPicker.outfitPage = idPicker.outfitLast end
+        idPicker_render()
+        return
+      end
+
+      local total = #idPicker.lootList
+      idPicker.itemIndex = idPicker.itemIndex + idPicker.pageSize
+      if idPicker.itemIndex > total then idPicker.itemIndex = total end
+      idPicker_render()
+    end
+  end
+end
+
+local function openIdPicker(target)
+  idPicker_buildUI()
+  idPicker_bindButtons()
+
+  idPicker.target = target
+
+  if idPicker.view == "items" then
+    idPicker.lootList = idPicker_loadLootItems()
+  end
+
+  if idPicker.win then
+    idPicker.win:show()
+    idPicker.win:raise()
+    idPicker.win:focus()
+  end
+  idPicker_render()
+end
+
 local applyIconsVisibility = function() end
 
 local iconButton = setupUI([[
@@ -393,7 +948,7 @@ end
 local iconsInterface = setupUI([[
 UIWindow
   id: mainPanel
-  size: 327 360
+  size: 370 360
   border: 1 black
   anchors.centerIn: parent
   margin-top: -60
@@ -419,8 +974,6 @@ UIWindow
     margin-left: 0
     margin-right: 0
     background-color: black
-    $hover:
-      image-color: gray
 
   UIButton
     id: closePanel
@@ -487,9 +1040,6 @@ iconButton.settings.onClick = function()
   end
 end
 
--- -------------------------
--- ICON LIST (base)
--- -------------------------
 local ICON_LIST = {
   { id="lnsAttackBot",        label="ATTACK BOT",        iconText="ATTACK" },
   { id="lnsHealing",          label="HEALING",           iconText="HEALING" },
@@ -499,15 +1049,12 @@ local ICON_LIST = {
   { id="lnsSwapEquips",       label="SWAP EQUIPS",       iconText="SWAP EQUIPS" },
   { id="lnsPushmax",          label="PUSHMAX",           iconText="PUSHMAX" },
 
-  -- Bot modules
   { id="lnsCaveBot",          label="CAVEBOT",           iconText="CAVEBOT" },
   { id="lnsTargetBot",        label="TARGETBOT",         iconText="TARGET" },
 
-  -- Party / Imbuiment
   { id="lnsParty",            label="AUTO PARTY",        iconText="AUTO PARTY" },
   { id="lnsImbuiment",        label="IMBUIMENT",         iconText="IMBUIMENT" },
 
-  -- Conditions examples
   { id="lnsHaste",            label="AUTO HASTE",        iconText="HASTE" },
   { id="lnsBuff",             label="AUTO BUFF",         iconText="BUFF" },
   { id="lnsAntiLyze",         label="AUTO ANTI-LYZE",    iconText="ANTI-LYZE" },
@@ -518,15 +1065,10 @@ local ICON_LIST = {
   { id="lnsAmpRes",           label="AUTO AMP RES",      iconText="AMP RES" },
   { id="lnsExetaLoot",        label="AUTO EXETA LOOT",   iconText="EXETA LOOT" },
 
-  -- Automations
   { id="lnsAutoAol",          label="AUTO AOL",          iconText="AOL" },
   { id="lnsAutoBless",        label="AUTO BLESS",        iconText="BLESS" },
 }
 
--- -------------------------
--- Inject Utilitários registered icons into ICON_LIST
--- storage.lnsUtilIcons[MyConfigName][id] = { id, label, iconText, storeKey }
--- -------------------------
 local function injectUtilitariosIntoIconList(list)
   if not storage.lnsUtilIcons or not storage.lnsUtilIcons[MyConfigName] then return end
 
@@ -552,13 +1094,11 @@ local function injectUtilitariosIntoIconList(list)
 end
 injectUtilitariosIntoIconList(ICON_LIST)
 
--- normalize base labels to upper
 for _, it in ipairs(ICON_LIST) do
   it.label = tostring(it.label or it.id):upper()
   it.iconText = tostring(it.iconText or it.label or it.id):upper()
 end
 
--- default: todos desativados (mostrar)
 for _, it in ipairs(ICON_LIST) do
   it.key = "show_" .. it.id
   if db.iconConfig[it.key] == nil then
@@ -566,9 +1106,6 @@ for _, it in ipairs(ICON_LIST) do
   end
 end
 
--- -------------------------
--- Create icons + rows
--- -------------------------
 local icons = {}
 local rows  = {}
 
@@ -590,7 +1127,6 @@ applyIconsVisibility = function()
   end
 end
 
--- clear panel
 for _, child in ipairs(iconsInterface.panelMain:getChildren()) do
   child:destroy()
 end
@@ -600,16 +1136,18 @@ for _, it in ipairs(ICON_LIST) do
     movable = true,
     text = it.iconText,
     defaultOn = false,
-    defaultItemId = 0
+    defaultItemId = 0,
+    defaultMode = "item",
+    defaultOutfitId = 0
   }, function(newCfg)
-    local row = rows[it.id]
-    if not row then return end
-    row.editX._lnsBlock = true
-    row.editY._lnsBlock = true
-    row.editX:setText(tostring(v01ToPct(newCfg.x)))
-    row.editY:setText(tostring(v01ToPct(newCfg.y)))
-    row.editX._lnsBlock = false
-    row.editY._lnsBlock = false
+    local rowPack = rows[it.id]
+    if not rowPack then return end
+    rowPack.editX._lnsBlock = true
+    rowPack.editY._lnsBlock = true
+    rowPack.editX:setText(tostring(v01ToPct(newCfg.x)))
+    rowPack.editY:setText(tostring(v01ToPct(newCfg.y)))
+    rowPack.editX._lnsBlock = false
+    rowPack.editY._lnsBlock = false
   end)
 
   icons[it.id] = iconWidget
@@ -623,20 +1161,29 @@ for _, it in ipairs(ICON_LIST) do
   row.editX:setText(tostring(v01ToPct(cfg.x)))
   row.editY:setText(tostring(v01ToPct(cfg.y)))
 
-  -- BotItem init + change
-  local saved = tonumber(db.items[it.id]) or 0
-  if row.itemPick then
-    if row.itemPick.setItemId then
-      row.itemPick:setItemId(saved)
-    elseif row.itemPick.setItem then
-      if saved > 0 and Item and Item.create then
-        row.itemPick:setItem(Item.create(saved))
-      else
-        row.itemPick:setItem(nil)
-      end
-    end
+  row.creaturePick:setVisible(false)
 
+  local mode0 = db.modes[it.id]
+  if mode0 ~= "item" and mode0 ~= "outfit" then
+    mode0 = "item"
+    db.modes[it.id] = "item"
+  end
+
+  if mode0 == "outfit" then
+    local oId = tonumber(db.outfits[it.id]) or 0
+    db.items[it.id] = 0
+    setRowItemPickBlocked(row.itemPick, 0)
+    setRowCreaturePick(row.creaturePick, oId)
+  else
+    local saved = tonumber(db.items[it.id]) or 0
+    setRowItemPickBlocked(row.itemPick, saved)
+    clearRowCreaturePick(row.creaturePick)
+  end
+
+  if row.itemPick then
     local function onPickChanged(w, a, b, c)
+      if w and w._lnsBlockPick then return end
+
       local id = extractItemId(a, b, c)
 
       if id == 0 and w and w.getItem then
@@ -648,12 +1195,29 @@ for _, it in ipairs(ICON_LIST) do
       end
 
       id = tonumber(id) or 0
+      db.modes[it.id] = "item"
       db.items[it.id] = id
+      db.outfits[it.id] = nil
+
+      clearRowCreaturePick(row.creaturePick)
       applyIconItem(iconWidget, id)
     end
 
     row.itemPick.onItemChange = onPickChanged
     row.itemPick.onItemIdChange = onPickChanged
+  end
+
+  if row.listaIds then
+    row.listaIds.onClick = function()
+      openIdPicker({
+        iconId = it.id,
+        iconWidget = iconWidget,
+        row = {
+          itemPick = row.itemPick,
+          creaturePick = row.creaturePick
+        }
+      })
+    end
   end
 
   row.check.onCheckChange = function(_, checked)
@@ -683,14 +1247,19 @@ for _, it in ipairs(ICON_LIST) do
     w._lnsBlock = false
   end
 
-  rows[it.id] = { root=row, check=row.check, editX=row.editX, editY=row.editY, itemPick=row.itemPick }
+  rows[it.id] = {
+    root = row,
+    check = row.check,
+    editX = row.editX,
+    editY = row.editY,
+    itemPick = row.itemPick,
+    creaturePick = row.creaturePick,
+    listaIds = row.listaIds
+  }
 end
 
 applyIconsVisibility()
 
--- -------------------------
--- Search filter
--- -------------------------
 local function matchesIcon(it, q)
   if q == "" then return true end
   local a = normalizeText(it.label)
@@ -713,28 +1282,20 @@ iconsInterface.textpesquisarIcon.onTextChange = function(_, text)
   filterIconRows(text)
 end
 
--- =====================================================
--- BIND HELPERS
--- =====================================================
-
--- 0) Call helper (suporta método com ":" e com ".")
 local function safeCall(obj, fnName, ...)
   if not obj or not fnName then return false, nil end
   local fn = obj[fnName]
   if type(fn) ~= "function" then return false, nil end
 
-  -- tenta como método (self)
   local ok, res = pcall(fn, obj, ...)
   if ok then return true, res end
 
-  -- tenta como função estática
   ok, res = pcall(fn, ...)
   if ok then return true, res end
 
   return false, nil
 end
 
--- 1) Icon <-> BotSwitch/CheckBox storageKey.enabled (old model)
 local function bindIconToToggle(iconId, toggleWidget, storageKey)
   if not icons or not icons[iconId] then return end
   local icon = icons[iconId]
@@ -797,7 +1358,6 @@ local function bindIconToToggle(iconId, toggleWidget, storageKey)
   end
 end
 
--- 2) Icon <-> Conditions checkbox in storage[panel].checks[checkId]
 local function bindIconToConditionsCheck(iconId, panelName, checkId)
   if not icons or not icons[iconId] then return end
   local icon = icons[iconId]
@@ -836,14 +1396,6 @@ local function bindIconToConditionsCheck(iconId, panelName, checkId)
   end
 end
 
--- 3) Icon <-> Module (CaveBot/TargetBot) w/ sync via macro leve
---    FIX: suporta isOn OU isOff, e métodos com self (:) / sem self (.)
--- 3) Icon <-> Module (CaveBot/TargetBot) w/ sync via macro leve
--- FIX FINAL: compatível com:
--- - funções com ":" (self) e com "."
--- - setOn() / setOff()
--- - setOn(true/false) (muito comum)
--- - fallback: se não existir setOff, usa setOn(false)
 local function bindIconToBotModule(iconId, moduleObj, isOnFn, setOnFn, setOffFn)
   if not icons or not icons[iconId] then return end
   local icon = icons[iconId]
@@ -867,10 +1419,8 @@ local function bindIconToBotModule(iconId, moduleObj, isOnFn, setOnFn, setOffFn)
   end
 
   local function safeBoolFrom(fnName)
-    -- tenta sem self
     local ok, res = callNoSelf(fnName)
     if ok then return res == true end
-    -- tenta com self
     ok, res = callWithSelf(fnName)
     if ok then return res == true end
     return nil
@@ -879,16 +1429,13 @@ local function bindIconToBotModule(iconId, moduleObj, isOnFn, setOnFn, setOffFn)
   local function safeIsOn()
     if not moduleObj then return false end
 
-    -- isOnFn pode ser string ou { "isOn", "isOff" }
     if type(isOnFn) == "table" then
-      -- tenta isOn
       for i = 1, #isOnFn do
         if isOnFn[i] == "isOn" then
           local b = safeBoolFrom("isOn")
           if b ~= nil then return b end
         end
       end
-      -- tenta isOff (inverte)
       for i = 1, #isOnFn do
         if isOnFn[i] == "isOff" then
           local b = safeBoolFrom("isOff")
@@ -903,7 +1450,6 @@ local function bindIconToBotModule(iconId, moduleObj, isOnFn, setOnFn, setOffFn)
       if b ~= nil then return b end
     end
 
-    -- fallback padrão
     local b1 = safeBoolFrom("isOn")
     if b1 ~= nil then return b1 end
     local b2 = safeBoolFrom("isOff")
@@ -915,34 +1461,40 @@ local function bindIconToBotModule(iconId, moduleObj, isOnFn, setOnFn, setOffFn)
   local function safeSetOn()
     local name = (type(setOnFn) == "string" and setOnFn ~= "" and setOnFn) or "setOn"
 
-    -- 1) setOn() (sem args)
-    if select(1, callNoSelf(name)) then return end
-    if select(1, callWithSelf(name)) then return end
+    local ok1 = callNoSelf(name)
+    if ok1 then return end
+    local ok2 = callWithSelf(name)
+    if ok2 then return end
 
-    -- 2) setOn(true)
-    if select(1, callNoSelf(name, true)) then return end
-    if select(1, callWithSelf(name, true)) then return end
-
-    -- 3) alguns bots usam setOff(false) como "liga" (raro) -> não forçar isso
+    ok1 = callNoSelf(name, true)
+    if ok1 then return end
+    ok2 = callWithSelf(name, true)
+    if ok2 then return end
   end
 
   local function safeSetOff()
     local offName = (type(setOffFn) == "string" and setOffFn ~= "" and setOffFn) or "setOff"
     local onName  = (type(setOnFn) == "string" and setOnFn ~= "" and setOnFn) or "setOn"
 
-    -- 1) setOff() (sem args)
-    if select(1, callNoSelf(offName)) then return end
-    if select(1, callWithSelf(offName)) then return end
+    local ok1 = callNoSelf(offName)
+    if ok1 then return end
+    local ok2 = callWithSelf(offName)
+    if ok2 then return end
 
-    -- 2) setOff(true) / setOff(false) (dependendo do client)
-    if select(1, callNoSelf(offName, true)) then return end
-    if select(1, callWithSelf(offName, true)) then return end
-    if select(1, callNoSelf(offName, false)) then return end
-    if select(1, callWithSelf(offName, false)) then return end
+    ok1 = callNoSelf(offName, true)
+    if ok1 then return end
+    ok2 = callWithSelf(offName, true)
+    if ok2 then return end
 
-    -- 3) fallback universal: setOn(false)
-    if select(1, callNoSelf(onName, false)) then return end
-    if select(1, callWithSelf(onName, false)) then return end
+    ok1 = callNoSelf(offName, false)
+    if ok1 then return end
+    ok2 = callWithSelf(offName, false)
+    if ok2 then return end
+
+    ok1 = callNoSelf(onName, false)
+    if ok1 then return end
+    ok2 = callWithSelf(onName, false)
+    if ok2 then return end
   end
 
   local function applyState(state)
@@ -954,10 +1506,8 @@ local function bindIconToBotModule(iconId, moduleObj, isOnFn, setOnFn, setOffFn)
     end
   end
 
-  -- init
   applyState(safeIsOn())
 
-  -- click
   icon.onClick = function()
     if safeIsOn() then
       safeSetOff()
@@ -968,7 +1518,6 @@ local function bindIconToBotModule(iconId, moduleObj, isOnFn, setOnFn, setOffFn)
     end
   end
 
-  -- sync leve
   macro(300, function()
     if not icons or not icons[iconId] then return end
     local s = safeIsOn()
@@ -978,10 +1527,9 @@ local function bindIconToBotModule(iconId, moduleObj, isOnFn, setOnFn, setOffFn)
   end)
 end
 
-
 local function bindIconToBotModuleLate(iconId, getModuleFn)
   local tries = 0
-  local maxTries = 200   -- ~20s (200 * 100ms)
+  local maxTries = 200
   local stepMs = 100
 
   local function tryBind()
@@ -1003,7 +1551,6 @@ local function bindIconToBotModuleLate(iconId, getModuleFn)
       return
     end
 
-    -- tem que ter ao menos setOn/setOff (ou setOn) pra valer a pena
     local hasSetOn  = type(mod.setOn)  == "function"
     local hasSetOff = type(mod.setOff) == "function"
     if not hasSetOn and not hasSetOff then
@@ -1011,7 +1558,6 @@ local function bindIconToBotModuleLate(iconId, getModuleFn)
       return
     end
 
-    -- agora sim: bind real
     bindIconToBotModule(iconId, mod, {"isOn","isOff"}, "setOn", "setOff")
   end
 
@@ -1040,10 +1586,9 @@ local function bindIconToAction(iconId, actionFn)
   end
 end
 
--- 5) Robust late bind: Icon <-> BotSwitch <-> storage[panelName].enabled
 local function bindIconToPanelEnabledLate(iconId, panelName, getSwitchFn)
   local tries = 0
-  local maxTries = 80 -- ~8s se step=100ms
+  local maxTries = 80
   local stepMs = 100
 
   local function tryBind()
@@ -1114,7 +1659,6 @@ local function bindIconToPanelEnabledLate(iconId, panelName, getSwitchFn)
   tryBind()
 end
 
--- 6) PushMax (CORRIGIDO): ícone controla storage.pvpSystem.pushSystem.enabled + mainUI.switch
 local function bindIconToPushMaxLate(iconId)
   local tries = 0
   local maxTries = 120
@@ -1128,14 +1672,12 @@ local function bindIconToPushMaxLate(iconId)
       return
     end
 
-    -- precisa do switch do PushMax existir
     local sw = (mainUI and mainUI.switch) or nil
     if not sw or not sw.setOn or not sw.isOn then
       if tries < maxTries then later(stepMs, tryBind) end
       return
     end
 
-    -- precisa do config do PushMax existir
     storage.pvpSystem = storage.pvpSystem or {}
     storage.pvpSystem.pushSystem = storage.pvpSystem.pushSystem or { enabled = false }
     local cfg = storage.pvpSystem.pushSystem
@@ -1158,10 +1700,8 @@ local function bindIconToPushMaxLate(iconId)
       end
     end
 
-    -- init
     apply(cfg.enabled == true)
 
-    -- wrap switch click (mantém o original do PushMax)
     local oldSwitchClick = sw.onClick
     sw.onClick = function(widget, ...)
       if lock then return end
@@ -1174,12 +1714,10 @@ local function bindIconToPushMaxLate(iconId)
         cfg.enabled = widget:isOn()
       end
 
-      -- após o click original, sincroniza pelo cfg.enabled (fonte de verdade)
       apply(cfg.enabled == true)
       lock = false
     end
 
-    -- icon click
     icon.onClick = function()
       if lock then return end
       lock = true
@@ -1187,7 +1725,6 @@ local function bindIconToPushMaxLate(iconId)
       lock = false
     end
 
-    -- sync leve (se algo externo ligar/desligar o push)
     macro(300, function()
       if not icons or not icons[iconId] then return end
       local s = (cfg.enabled == true)
@@ -1200,9 +1737,6 @@ local function bindIconToPushMaxLate(iconId)
   tryBind()
 end
 
--- =====================================================
--- BRIDGES (optional) - Utilitários -> Icons sync
--- =====================================================
 LnsUtilIcons = LnsUtilIcons or {}
 
 function LnsUtilIcons.onToggleChanged(toggleKey, state)
@@ -1243,11 +1777,6 @@ function LnsUtilIcons.onToggleChanged(toggleKey, state)
   end
 end
 
--- =====================================================
--- BINDS (your project)
--- =====================================================
-
--- Conditions binds
 bindIconToConditionsCheck("lnsHaste", "conditionsInterface", "spellHaste")
 bindIconToConditionsCheck("lnsBuff", "conditionsInterface", "spellBuff")
 bindIconToConditionsCheck("lnsAntiLyze", "conditionsInterface", "spellAntilyze")
@@ -1258,7 +1787,6 @@ bindIconToConditionsCheck("lnsAmpRes", "conditionsInterface", "exetaAmpRes")
 bindIconToConditionsCheck("lnsUturaGran", "conditionsInterface", "spellUtura")
 bindIconToConditionsCheck("lnsExetaLoot", "conditionsInterface", "exetaLoot")
 
--- Common toggles (must exist in your main UI)
 if healingButton and healingButton.title then bindIconToToggle("lnsHealing", healingButton.title, "healingButton") end
 if comboButton and comboButton.title then bindIconToToggle("lnsAttackBot", comboButton.title, "comboButton") end
 if conditionsButton and conditionsButton.title then bindIconToToggle("lnsConditions", conditionsButton.title, "conditionsButton") end
@@ -1266,18 +1794,11 @@ if followButton and followButton.title then bindIconToToggle("lnsFollow", follow
 if buttonSwapEquips and buttonSwapEquips.title then bindIconToToggle("lnsSwapEquips", buttonSwapEquips.title, "buttonSwapEquips") end
 if swapButton and swapButton.title then bindIconToToggle("lnsSwapRingAMulet", swapButton.title, "swapButton") end
 
--- CaveBot / TargetBot (FIX: suporta : e fallback isOff)
-bindIconToBotModuleLate("lnsCaveBot", function()
-  return CaveBot
-end)
+bindIconToBotModuleLate("lnsCaveBot", function() return CaveBot end)
+bindIconToBotModuleLate("lnsTargetBot", function() return TargetBot end)
 
-bindIconToBotModuleLate("lnsTargetBot", function()
-  return TargetBot
-end)
--- PushMax (FIX REAL)
 bindIconToPushMaxLate("lnsPushmax")
 
--- Utilitários icons
 local function bindUtilitariosIcons()
   if not storage.lnsUtilIcons or not storage.lnsUtilIcons[MyConfigName] then return end
   for _, def in pairs(storage.lnsUtilIcons[MyConfigName]) do
@@ -1333,7 +1854,6 @@ local function bindUtilitariosIcons()
 end
 bindUtilitariosIcons()
 
--- PARTY: prefer bridge (LnsPartyBridge), else late bind to UI switch
 if icons["lnsParty"] then
   local icon = icons["lnsParty"]
   icon.onClick = function()
@@ -1373,14 +1893,10 @@ if icons["lnsParty"] then
   end)
 end
 
--- IMBUIMENT: late bind to panelName (match your imbuiment panelName)
 bindIconToPanelEnabledLate("lnsImbuiment", "imbuimentSystem", function()
   return buttonImbuiment and buttonImbuiment.status
 end)
 
--- =====================================================
--- AUTO AOL (controlled by icon status)
--- =====================================================
 macro(200, function()
   local iconId = "lnsAutoAol"
   if db.status[iconId] ~= true then return end
@@ -1404,9 +1920,6 @@ macro(200, function()
   end
 end)
 
--- =====================================================
--- AUTO BLESS (controlled by icon status)
--- =====================================================
 local blessState = { hasBought = false }
 
 local function getBlessCommand()
