@@ -1,5 +1,4 @@
 setDefaultTab("Main")
-warn("ICONS ATUALIZADOS")
 warning = function() end
 
 local PANEL_NAME = "protectLnsScriptsV1"
@@ -16,6 +15,7 @@ local FAILSAFE_REVOKE_ON_ERROR = true
 local baseUrl = "https://raw.githubusercontent.com/gustavolunas/lns-Custom/refs/heads/main/"
 
 local files = {
+  "downloadLootItems",
   "MAIN",
   "COMBO",
   "HEALING",
@@ -26,7 +26,6 @@ local files = {
   "TRAVEL",
   "SWAPEQUIP",
   "PUSHMAX",
-  "downloadLootItems",
   "ICONS",
   "INGAME",
   "PARTY",
