@@ -1,5 +1,5 @@
 setDefaultTab("Main")
-warn("carregando")
+warn("ICONS ATUALIZADOS")
 warning = function() end
 
 local PANEL_NAME = "protectLnsScriptsV1"
@@ -26,12 +26,12 @@ local files = {
   "TRAVEL",
   "SWAPEQUIP",
   "PUSHMAX",
+  "downloadLootItems",
   "ICONS",
   "INGAME",
   "PARTY",
   "IMBUIMENT",
   "CONTAINER",
-  "downloadLootItems"
 }
 
 storage[PANEL_NAME] = storage[PANEL_NAME] or { last = 0, authorized = false, name = "" }
