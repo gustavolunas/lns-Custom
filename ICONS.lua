@@ -60,6 +60,23 @@ local function normalizeText(s)
   return s
 end
 
+local function iconTextFromInput(s)
+  s = tostring(s or "")
+  s = s:gsub("^%s+", ""):gsub("%s+$", "")
+  -- permite quebrar linha no texto do ícone usando "|" ou "\n"
+  s = s:gsub("\\n", "\n")
+  s = s:gsub("|", "\n")
+  return s
+end
+
+local function iconTextToInput(s)
+  s = tostring(s or "")
+  -- mostra quebra de linha como "|"
+  s = s:gsub("\n", "|")
+  return s
+end
+
+
 local MyConfigName = "default"
 if modules and modules.game_bot and modules.game_bot.contentsPanel
   and modules.game_bot.contentsPanel.config
@@ -78,7 +95,8 @@ storage.lnsIconsDB[MyConfigName] = storage.lnsIconsDB[MyConfigName] or {
   status = {},       
   items = {},      
   modes = {},         
-  outfits = {}         
+  outfits = {},        
+  texts = {}          
 }
 local db = storage.lnsIconsDB[MyConfigName]
 db.iconConfig = db.iconConfig or {}
@@ -87,6 +105,7 @@ db.status     = db.status     or {}
 db.items      = db.items      or {}
 db.modes      = db.modes      or {}
 db.outfits    = db.outfits    or {}
+db.texts      = db.texts      or {}
 
 local function applyRelativePos(widget, cfg)
   if not widget or not cfg then return end
@@ -299,7 +318,10 @@ local function addIcone(id, options, onPosChanged)
   w.status:setOn(savedStatus == true)
 
   if options.text then
-    w.text:setText(options.text)
+    local t = db.texts[id]
+    if type(t) ~= "string" then t = "" end
+    local showText = (t ~= "" and iconTextFromInput(t)) or options.text
+    w.text:setText(showText)
     w.text:setFont("verdana-9px")
     w.text:setColor("white")
     w.text:setMarginBottom("-5")
@@ -424,21 +446,25 @@ UIWidget
     height: 18
     image-source: /images/ui/button_rounded
 
-  Label
-    id: text
+  BotTextEdit
+    id: nameEdit
     anchors.left: listaIds.right
     anchors.verticalCenter: parent.verticalCenter
     margin-left: 6
-    width: 127
+    width: 115
+    height: 18
     font: verdana-9px-bold
     color: white
+    text-align: left
     text: ""
+    image-color: #828282
+    tooltip: (use | para quebrar linha)
 
   Label
     id: lblX
-    anchors.left: text.right
+    anchors.left: nameEdit.right
     anchors.verticalCenter: parent.verticalCenter
-    margin-left: 0
+    margin-left: 12
     width: 16
     font: verdana-9px
     color: white
@@ -448,9 +474,10 @@ UIWidget
     id: editX
     anchors.left: lblX.right
     anchors.verticalCenter: parent.verticalCenter
-    margin-left: 3
+    margin-left: 1
     width: 36
     height: 18
+    image-color: #828282
     text: "0"
 
   Label
@@ -467,7 +494,8 @@ UIWidget
     id: editY
     anchors.left: lblY.right
     anchors.verticalCenter: parent.verticalCenter
-    margin-left: 3
+    margin-left: 1
+    image-color: #828282
     width: 36
     height: 18
     text: "0"
@@ -1165,7 +1193,9 @@ for _, it in ipairs(ICON_LIST) do
   local row = g_ui.loadUIFromString(rowTemplate, iconsInterface.panelMain)
   row:setId("row_" .. it.id)
 
-  row.text:setText(it.label)
+  -- nome editável do texto do ícone (default vindo da macro)
+  row.nameEdit:setText(iconTextToInput((db.texts[it.id] and db.texts[it.id] ~= "" and db.texts[it.id]) or it.iconText))
+  row.nameEdit:setTooltip("Altere para o nome desejado no ICONE")
   row.check:setChecked(db.iconConfig[it.key] == true)
 
   row.editX:setText(tostring(v01ToPct(cfg.x)))
@@ -1235,6 +1265,17 @@ for _, it in ipairs(ICON_LIST) do
     applyIconsVisibility()
   end
 
+  row.nameEdit.onTextChange = function(w)
+    if w._lnsBlock then return end
+    local raw = tostring(w:getText() or "")
+    db.texts[it.id] = raw
+    local showText = (raw ~= "" and iconTextFromInput(raw)) or it.iconText
+    if iconWidget and iconWidget.text and iconWidget.text.setText then
+      iconWidget.text:setText(showText)
+    end
+  end
+
+
   row.editX.onTextChange = function(w)
     if w._lnsBlock then return end
     local v = normPct(w:getText())
@@ -1260,6 +1301,7 @@ for _, it in ipairs(ICON_LIST) do
   rows[it.id] = {
     root = row,
     check = row.check,
+    nameEdit = row.nameEdit,
     editX = row.editX,
     editY = row.editY,
     itemPick = row.itemPick,
@@ -1813,7 +1855,7 @@ local function bindUtilitariosIcons()
   if not storage.lnsUtilIcons or not storage.lnsUtilIcons[MyConfigName] then return end
   for _, def in pairs(storage.lnsUtilIcons[MyConfigName]) do
     if def and def.id and def.storeKey and icons[def.id] then
-      local iconId = def.id
+      local iconId = def.id 
       local key = def.storeKey
       local icon = icons[iconId]
 
