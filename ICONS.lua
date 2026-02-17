@@ -1,5 +1,4 @@
 setDefaultTab("Main")
-warn("ICONS ATUALIZADO!!!")
 
 local function later(ms, fn)
   if type(schedule) == "function" then
@@ -259,6 +258,16 @@ local function addIcone(id, options, onPosChanged)
   w.botWidget = true
   w.botIcon = true
 
+  w.onMousePress = function(widget, mousePos, button)
+    return true
+  end
+  w.onMouseRelease = function(widget, mousePos, button)
+    return true
+  end
+  w.onMouseMove = function(widget, mousePos)
+    return true
+  end
+  
   local savedMode = db.modes[id]
   if savedMode ~= "item" and savedMode ~= "outfit" then
     savedMode = (options.defaultMode == "outfit") and "outfit" or "item"
@@ -293,7 +302,7 @@ local function addIcone(id, options, onPosChanged)
     w.text:setText(options.text)
     w.text:setFont("verdana-9px")
     w.text:setColor("white")
-    w.text:setMarginBottom("0")
+    w.text:setMarginBottom("-5")
   else
     w.text:setText("")
   end
@@ -748,7 +757,7 @@ local function idPicker_addOutfitCell(id)
 
   w.item:setVisible(false)
   w.creature:setVisible(true)
-  w.creature:setSize({ width = 50, height = 50 })
+  w.creature:setSize({ width = 65, height = 65 })
 
   local base = nil
   if player and player.getOutfit then
@@ -775,7 +784,7 @@ local function idPicker_addItemCell(entry)
   w.creature:setVisible(false)
   w.item:setVisible(true)
 
-  w.item:setSize({ width = 50, height = 50 })
+  w.item:setSize({ width = 65, height = 65 })
   w.item:setItemId(id)
   w.item:setTooltip(name .. " (" .. id .. ")")
 
