@@ -5,8 +5,7 @@ if not storage[switchHud] then storage[switchHud] = { enabled = false } end
 
 hudButton = setupUI([[
 Panel
-  height: 20
-  margin-top: -3
+  height: 17
   BotSwitch
     id: title
     anchors.top: parent.top
@@ -395,8 +394,9 @@ end
 -- UI (IMAGEM + TEXTOS)
 -- =========================
 local targetUI = setupUI([[
-Panel
+UIWindow
   id: targetInfoHUD
+  anchors.centerIn: parent
   height: 52
   width: 210
   opacity: 1.00
@@ -409,6 +409,7 @@ Panel
     anchors.left: parent.left
     anchors.verticalCenter: parent.verticalCenter
     margin-left: -10
+    margin-top: -10
 
   Label
     id: line1
@@ -417,7 +418,7 @@ Panel
     anchors.top: parent.top
     margin-left: 6
     margin-top: 4
-    font: verdana-9px-bold
+    font: verdana-11px-rounded
     color: white
     text: "TARGET: -"
 
@@ -427,7 +428,7 @@ Panel
     anchors.right: line1.right
     anchors.top: line1.bottom
     margin-top: 1
-    font: verdana-9px-bold
+    font: verdana-11px-rounded
     color: white
     text: "HP: -"
 
@@ -437,7 +438,7 @@ Panel
     anchors.right: line1.right
     anchors.top: line2.bottom
     margin-top: 1
-    font: verdana-9px-bold
+    font: verdana-11px-rounded
     color: white
     text: "DIST: -"
 ]], g_ui.getRootWidget())
@@ -459,10 +460,17 @@ end
 local function applyTargetPos()
   local st = storage[HUD_PANEL_STORAGE]
   local p = st and st.targetInfoPos
-  if p and p.x and p.y then
-    targetUI:breakAnchors()
-    targetUI:setPosition({ x = p.x, y = p.y })
+
+  targetUI:breakAnchors()
+
+  -- se não tem posição salva (ou está zerada), centraliza igual as barras
+  if not p or not p.x or not p.y or (p.x == 0 and p.y == 0) then
+    targetUI:addAnchor(AnchorHorizontalCenter, "parent", AnchorHorizontalCenter)
+    targetUI:addAnchor(AnchorVerticalCenter, "parent", AnchorVerticalCenter)
+    return
   end
+
+  targetUI:setPosition({ x = p.x, y = p.y })
 end
 
 local function saveTargetPos()
