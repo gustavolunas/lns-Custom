@@ -147,6 +147,7 @@ local files = {
   "SWAPEQUIP",
   "PUSHMAX",
   "ICONS",
+  "HUD",
   "INGAME",
   "PARTY",
   "IMBUIMENT",
