@@ -34,7 +34,7 @@ local function itemKey(id) return tostring(id or 0) end
 -- ==========================================================
 buttonImbuiment = setupUI([[
 Panel
-  height: 50
+  height: 32
 
   BotSwitch
     id: status
@@ -102,18 +102,6 @@ Panel
     $hover:
       opacity: 0.95
 
-  CheckBox
-    id: timerImbui
-    anchors.top: prev.bottom
-    anchors.left: ImbuirManual.left
-    anchors.right: prev.right
-    margin-top: 2
-    text: Timers Imbuiment?
-    font: verdana-9px
-    text-auto-resize: true
-    image-source: /images/ui/checkbox_round
-    margin-left: 1
-
 ]], parent)
 
 storage[panelName] = storage[panelName] or {}
@@ -129,12 +117,6 @@ buttonImbuiment.status.onClick = function(widget)
   widget:setOn(newState)
   st.enabled = newState
 end
-
-buttonImbuiment.timerImbui:setChecked(storage[panelName].timerImbui == true)
-  buttonImbuiment.timerImbui.onClick = function(widget)
-    storage[panelName].timerImbui = not (storage[panelName].timerImbui == true)
-    widget:setChecked(storage[panelName].timerImbui)
-  end
 
 buttonImbuiment.ImbuirCavebot.onClick = function()
   if CaveBot and CaveBot.addAction then
@@ -512,20 +494,13 @@ timerUI:hide()
 -- storage da posição
 st.timerWinPos = st.timerWinPos or nil -- {x=..., y=...}
 
--- detecta mobile sem modules._G
-local function isClientMobile()
-  if g_app and type(g_app.isMobile) == "function" then
-    return g_app:isMobile()
-  end
-  return false
-end
-
 local function isMoveKeyPressed()
   -- PC: CTRL  |  Mobile: F2 (igual teu exemplo)
-  if isClientMobile() then
-    return g_keyboard and type(g_keyboard.isKeyPressed) == "function" and g_keyboard.isKeyPressed("F2")
+  if modules._G.g_app.isMobile() then
+    return modules.corelib.g_keyboard.isKeyPressed("F2");
+	else
+		return modules.corelib.g_keyboard.isCtrlPressed();
   end
-  return g_keyboard and type(g_keyboard.isCtrlPressed) == "function" and g_keyboard.isCtrlPressed()
 end
 
 local function applyTimerPos()
@@ -591,7 +566,8 @@ disableDrag()
 -- controla drag PC/Mobile + salva fallback se mexer por outras formas
 local lastPressed = nil
 macro(100, function()
-  if not storage[panelName].timerImbui then return end
+  local stHud = storage.hudInterfaceControl
+  if not stHud or not stHud.switches or stHud.switches.timerImbuiment ~= true then return end
   if not timerUI or not timerUI.isVisible or not timerUI:isVisible() then return end
 
   local pressed = isMoveKeyPressed()
@@ -779,7 +755,7 @@ local function destroyImbuingPanel()
   local knownIds = { "imbuingWindow", "imbueWindow", "ImbuingWindow", "imbueItemWindow" }
   for i = 1, #knownIds do
     local w = root:recursiveGetChildById(knownIds[i])
-    if w and not w:isDestroyed() then
+    if w and not w:isVisible() then
       w:hide()
       return true
     end
@@ -1065,7 +1041,8 @@ local function getRemainingSeconds(itemId, imbueIndex)
 end
 
 local function rebuildTimersUI()
-  if not storage[panelName].timerImbui then return end
+  local stHud = storage.hudInterfaceControl
+  if not stHud or not stHud.switches or stHud.switches.timerImbuiment ~= true then return end
   if not timerUI or not timerUI.list then return end
   local list = timerUI.list
   list:destroyChildren()
@@ -1182,7 +1159,12 @@ onTextMessage(function(mode, text)
 end)
 
 macro(300, function()
-  if not storage[panelName].timerImbui then
+  if not storage[switchHud].enabled then 
+    timerUI:hide() 
+    return
+  end
+  local stHud = storage.hudInterfaceControl
+  if not stHud or not stHud.switches or stHud.switches.timerImbuiment ~= true then
     timerUI:hide()
     return
   end
@@ -1195,7 +1177,8 @@ end)
 
 -- dá LOOK (10s)
 macro(10000, function()
-  if not storage[panelName].timerImbui then return end
+  local stHud = storage.hudInterfaceControl
+  if not stHud or not stHud.switches or stHud.switches.timerImbuiment ~= true then return end
   if not timerUI:isVisible() then return end
 
   if #st.list == 0 then
@@ -1224,7 +1207,8 @@ end)
 
 -- refresh do texto do painel (não dá look, só redesenha)
 macro(1000, function()
-  if not storage[panelName].timerImbui then return end
+  local stHud = storage.hudInterfaceControl
+  if not stHud or not stHud.switches or stHud.switches.timerImbuiment ~= true then return end
   if not timerUI:isVisible() then return end
   rebuildTimersUI()
 end)
