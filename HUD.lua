@@ -579,43 +579,62 @@ macro(100, function()
   targetUI.line3:setText(string.format("DIST: %d SQM", dist))
 end)
 
+-- =====================================
+-- =========== TARGET HP% SAFE =========
+-- (não apaga texto do vBot Check Players)
+-- =====================================
+
+local lastTargetId = 0
+
 macro(200, function()
   if not hudMasterOn() or not targetHPOn() then
-    local specs = getSpectators(false)
-    for i = 1, #specs do
-      specs[i]:clearText()
+    -- se tinha um target antigo com texto nosso, limpa só ele
+    if lastTargetId ~= 0 then
+      local specs = getSpectators(false)
+      for i = 1, #specs do
+        local c = specs[i]
+        if c and c.getId and c:getId() == lastTargetId then
+          c:clearText()
+          break
+        end
+      end
+      lastTargetId = 0
     end
     return
   end
 
   local target = g_game.getAttackingCreature()
   if not target then
-    local specs = getSpectators(false)
-    for i = 1, #specs do
-      specs[i]:clearText()
+    -- sem target: limpa só o último target
+    if lastTargetId ~= 0 then
+      local specs = getSpectators(false)
+      for i = 1, #specs do
+        local c = specs[i]
+        if c and c.getId and c:getId() == lastTargetId then
+          c:clearText()
+          break
+        end
+      end
+      lastTargetId = 0
     end
     return
   end
 
-  local playerId = player:getId()
+  local tid = target:getId()
 
-  local specs = getSpectators(false)
-  for i = 1, #specs do
-    local c = specs[i]
-    if c and c.getId and c:getId() == playerId then
-      c:clearText()
-    end
-  end
-
-  for i = 1, #specs do
-    local c = specs[i]
-    if c and c.getId then
-      local cid = c:getId()
-      if cid ~= playerId and cid ~= target:getId() then
+  -- trocou de target: limpa o texto do target antigo (somente ele)
+  if lastTargetId ~= 0 and lastTargetId ~= tid then
+    local specs = getSpectators(false)
+    for i = 1, #specs do
+      local c = specs[i]
+      if c and c.getId and c:getId() == lastTargetId then
         c:clearText()
+        break
       end
     end
   end
+
+  lastTargetId = tid
 
   local hp = target:getHealthPercent()
   if not hp then return end
@@ -629,6 +648,7 @@ macro(200, function()
     color = "red"
   end
 
+  -- seta texto SÓ no target
   target:setText(hp .. "%", color)
 end)
 
