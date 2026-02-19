@@ -937,8 +937,8 @@ local applyIconsVisibility = function() end
 
 local iconButton = setupUI([[
 Panel
-  height: 20
-  margin-top: -3
+  height: 17
+
   BotSwitch
     id: title
     anchors.top: parent.top
