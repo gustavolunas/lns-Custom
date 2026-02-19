@@ -7,7 +7,7 @@ local STORAGE_KEY = "autoSioSystem_v1"
 storage[STORAGE_KEY] = storage[STORAGE_KEY] or {}
 
 local cfg = storage[STORAGE_KEY]
-cfg.spell = cfg.spell or "exura sio"
+cfg.spell = cfg.spell or "EXURA SIO"
 cfg.usePrioList   = cfg.usePrioList == true
 cfg.useFriendList = (cfg.useFriendList ~= false)
 cfg.useGuild      = cfg.useGuild == true
