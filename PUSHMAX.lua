@@ -657,7 +657,7 @@ PVPSwitch < BotSwitch
 
 mainUI = setupUI([[
 Panel
-  height: 20
+  height: 17
 
   PVPSwitch
     id: switch
@@ -2221,6 +2221,7 @@ end)
 -- Sistema funciona perfeitamente apenas com hotkey
 
 end -- Fim do bloco do sistema de Push
+
 
 
 
