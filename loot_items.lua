@@ -1,4 +1,4 @@
-LootItems = {
+ItensTibiaFandom = {
   ["200 theons"] = 37712,
   ["25 years backpack"] = 39693,
   ["50 theons"] = 37710,
@@ -9109,5 +9109,6 @@ LootItems = {
   ["zombie dummy"] = 12050,
   ["zombie soul core"] = 47625,
 }
+
 
 
