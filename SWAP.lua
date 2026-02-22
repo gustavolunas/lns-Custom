@@ -1,4 +1,5 @@
 setDefaultTab("Main")
+
 local switchSwap = "swapButton"
 if not storage[switchSwap] then storage[switchSwap] = { enabled = false } end
 
@@ -760,8 +761,12 @@ autoItemOnState(panelSwap)
 -- SWAP + EQUIP FULL (RING/AMULET) - BLOCO ÚNICO FINAL
 -- ==========================================================
 
+-- ==========================================================
+-- SWAP + EQUIP FULL (RING/AMULET) - BLOCO ÚNICO FINAL
+-- ==========================================================
+
 local __swapOld = g_game.getClientVersion() < 800
-local __SWAP_CD_MS = 10000
+local __SWAP_CD_MS = 500  -- ✅ 7s
 
 local __CD_MIGHT_RING = 3048
 local __CD_SSA_AMULET = 3081
@@ -875,6 +880,43 @@ local function __getActiveIndexByKey(kindTable, keyName)
   return nil, nil
 end
 
+-- ==========================================================
+-- ✅ UNEQUIPITEM (adaptado pro teu swap: usa __swapOld)
+-- ==========================================================
+local function unequipItem(slot)
+  local item = getSlot(slot)
+  if not item then return false end
+
+  if not __swapOld then
+    -- clientes novos: equipItemId no próprio item geralmente "toggle"/remove
+    g_game.equipItemId(item:getId())
+    return true
+  end
+
+  -- old: mover pra uma bp aberta "válida"
+  local dest = nil
+  for _, container in ipairs(g_game.getContainers() or {}) do
+    local cname = (container.getName and container:getName() or ""):lower()
+    local cap = container.getCapacity and container:getCapacity() or 0
+    local count = #(container.getItems() or {})
+    if cap > count and
+       not cname:find("dead") and not cname:find("slain") and
+       not cname:find("depot") and not cname:find("quiver") then
+      dest = container
+      break
+    end
+  end
+
+  if not dest then
+    warn("[Swap] Open Backpack.")
+    return false
+  end
+
+  local pos = dest:getSlotPosition(dest:getCapacity())
+  g_game.move(item, pos, item:getCount())
+  return true
+end
+
 -- cooldowns locais
 local __ringCdUntil   = { [1]=0, [2]=0, [3]=0 }
 local __amuletCdUntil = { [1]=0, [2]=0, [3]=0 }
@@ -901,32 +943,38 @@ local function __processRingSwap(idx, row)
   local cdUntil = (useCd and (__ringCdUntil[idx] or 0)) or 0
   local cdActive = (useCd and (cdUntil > t)) or false
 
+  -- 1) HP baixo -> equipa especial (e inicia/reset do cooldown quando equipar)
   if hp < equipPct then
-    if item3 > 0 and fid == item3 then return false end
     if __isIdIn(fid, item2, item3) then return false end
 
     if __equipSpecialToSlot(item2, item3, __SLOT_FINGER) then
-      -- ✅ só seta cooldown se for Might
-      if useCd and (not cdActive) then __ringCdUntil[idx] = t + __SWAP_CD_MS end
+      if useCd then
+        -- ✅ sempre que EQUIPAR Might, conta 7s
+        __ringCdUntil[idx] = t + __SWAP_CD_MS
+      end
       delay(120)
       return true
     end
     return false
   end
 
-  -- ✅ re-equip durante cooldown só existe quando o cooldown é relevante (Might)
-  if useCd and fid == 0 and cdActive then
-    if __equipSpecialToSlot(item2, item3, __SLOT_FINGER) then
-      delay(120)
-      return true
+  -- 2) ✅ durante cooldown do Might:
+  --    se HP > unequip -> DESEQUIPA o slot (fica vazio)
+  --    e NÃO equipa padrão até o cooldown acabar
+  if useCd and cdActive then
+    if hp > unequipPct then
+      if fid ~= 0 then
+        if unequipItem(__SLOT_FINGER) then
+          delay(120)
+          return true
+        end
+      end
     end
     return false
   end
 
-  local wantDefault = (hp > unequipPct) or (fid == 0 and hp >= equipPct)
-  if wantDefault then
-    -- ✅ trava default só se for Might e estiver em cooldown
-    if useCd and cdActive then return false end
+  -- 3) cooldown acabou (ou não é Might): se HP > unequip -> equipa padrão
+  if hp > unequipPct then
     if ring1 > 0 and fid ~= ring1 then
       if __equipIdToSlot(ring1, __SLOT_FINGER) then
         delay(120)
@@ -960,32 +1008,38 @@ local function __processAmuletSwap(idx, row)
   local cdUntil = (useCd and (__amuletCdUntil[idx] or 0)) or 0
   local cdActive = (useCd and (cdUntil > t)) or false
 
+  -- 1) HP baixo -> equipa especial (e inicia/reset do cooldown quando equipar)
   if hp < equipPct then
-    if item3 > 0 and nid == item3 then return false end
     if __isIdIn(nid, item2, item3) then return false end
 
     if __equipSpecialToSlot(item2, item3, __SLOT_NECK) then
-      -- ✅ só seta cooldown se for SSA
-      if useCd and (not cdActive) then __amuletCdUntil[idx] = t + __SWAP_CD_MS end
+      if useCd then
+        -- ✅ sempre que EQUIPAR SSA, conta 7s
+        __amuletCdUntil[idx] = t + __SWAP_CD_MS
+      end
       delay(120)
       return true
     end
     return false
   end
 
-  -- ✅ re-equip durante cooldown só existe quando o cooldown é relevante (SSA)
-  if useCd and nid == 0 and cdActive then
-    if __equipSpecialToSlot(item2, item3, __SLOT_NECK) then
-      delay(120)
-      return true
+  -- 2) ✅ durante cooldown do SSA:
+  --    se HP > unequip -> DESEQUIPA o slot (fica vazio)
+  --    e NÃO equipa padrão até o cooldown acabar
+  if useCd and cdActive then
+    if hp > unequipPct then
+      if nid ~= 0 then
+        if unequipItem(__SLOT_NECK) then
+          delay(120)
+          return true
+        end
+      end
     end
     return false
   end
 
-  local wantDefault = (hp > unequipPct) or (nid == 0 and hp >= equipPct)
-  if wantDefault then
-    -- ✅ trava default só se for SSA e estiver em cooldown
-    if useCd and cdActive then return false end
+  -- 3) cooldown acabou (ou não é SSA): se HP > unequip -> equipa padrão
+  if hp > unequipPct then
     if amu1 > 0 and nid ~= amu1 then
       if __equipIdToSlot(amu1, __SLOT_NECK) then
         delay(120)
@@ -996,7 +1050,6 @@ local function __processAmuletSwap(idx, row)
 
   return false
 end
-
 
 -- =========================
 -- EQUIP FULL (RING/AMULET)
@@ -1018,17 +1071,13 @@ local function __processRingFull(idx, row)
   if item2 <= 0 and item3 <= 0 then return false end
 
   local targetEquipped = (item3 > 0) and item3 or item2
-
-  -- se já está com o "equipado" certo, não faz nada
   if fid == targetEquipped then return false end
 
-  -- força equipar ITEM2 (e aceita ITEM3 como fallback)
   if __equipSpecialToSlot(item2, item3, __SLOT_FINGER) then
     delay(120)
     return true
   end
 
-  -- não achou item -> coloca retry leve (não spamma e não soma cooldown)
   __ringFullRetryUntil[idx] = t + __FULL_RETRY_MS
   return false
 end
@@ -1045,7 +1094,6 @@ local function __processAmuletFull(idx, row)
   if item2 <= 0 and item3 <= 0 then return false end
 
   local targetEquipped = (item3 > 0) and item3 or item2
-
   if nid == targetEquipped then return false end
 
   if __equipSpecialToSlot(item2, item3, __SLOT_NECK) then
@@ -1065,11 +1113,8 @@ macro(50, function()
   if not storage["swapButton"] or storage["swapButton"].enabled ~= true then return end
   local st = storage["panelSwapStorage"]
   if not st or not st.ring then return end
-
-  -- Se existir Equip Full ativo, o Swap não roda (modo exclusivo já garante, mas deixo seguro)
   local fIdx = __getActiveIndexByKey(st.ring, "ativadorFull")
   if fIdx then return end
-
   local idx, row = __getActiveIndexByKey(st.ring, "ativador")
   if not idx or not row then return end
   __processRingSwap(idx, row)
@@ -1079,10 +1124,8 @@ macro(50, function()
   if not storage["swapButton"] or storage["swapButton"].enabled ~= true then return end
   local st = storage["panelSwapStorage"]
   if not st or not st.amulet then return end
-
   local fIdx = __getActiveIndexByKey(st.amulet, "ativadorFull")
   if fIdx then return end
-
   local idx, row = __getActiveIndexByKey(st.amulet, "ativador")
   if not idx or not row then return end
   __processAmuletSwap(idx, row)
@@ -1092,7 +1135,6 @@ macro(50,function()
   if not storage["swapButton"] or storage["swapButton"].enabled ~= true then return end
   local st = storage["panelSwapStorage"]
   if not st or not st.ring then return end
-
   local idx, row = __getActiveIndexByKey(st.ring, "ativadorFull")
   if not idx or not row then return end
   __processRingFull(idx, row)
@@ -1102,7 +1144,6 @@ macro(50,function()
   if not storage["swapButton"] or storage["swapButton"].enabled ~= true then return end
   local st = storage["panelSwapStorage"]
   if not st or not st.amulet then return end
-
   local idx, row = __getActiveIndexByKey(st.amulet, "ativadorFull")
   if not idx or not row then return end
   __processAmuletFull(idx, row)
@@ -1217,6 +1258,9 @@ local function __ensureBpIsOpen(bpId)
   return __forceOpenContainerById(bpId)
 end
 
+-- --------------------------
+-- Slot livre (drop 1 item se full)
+-- --------------------------
 local function __playerPos()
   if pos then return pos() end
   if player and player.getPosition then return player:getPosition() end
@@ -1235,6 +1279,7 @@ local function __keepSlotFree(container)
 
   local items = container:getItems() or {}
 
+  -- dropa um item NÃO-container (não dropa bag)
   for i = #items, 1, -1 do
     local it = items[i]
     if it then
@@ -1246,11 +1291,15 @@ local function __keepSlotFree(container)
     end
   end
 
+  -- fallback: dropa o primeiro
   if items[1] then
     g_game.move(items[1], p, 1)
   end
 end
 
+-- --------------------------
+-- Detectar se container tem item2/item3
+-- --------------------------
 local function __containerHasId(container, idA, idB)
   if not container then return false end
   idA = tonumber(idA) or 0
@@ -1268,6 +1317,10 @@ local function __containerHasId(container, idA, idB)
   return false
 end
 
+-- --------------------------
+-- Abrir próxima BP de dentro da BP atual
+-- (e retornar o ID aberto)
+-- --------------------------
 local function __openNextBPInside(container)
   if not container then return 0 end
   for _, it in ipairs(container:getItems() or {}) do
@@ -1284,6 +1337,9 @@ local function __openNextBPInside(container)
   return 0
 end
 
+-- --------------------------
+-- Linha ativa: full tem prioridade, senão swap
+-- --------------------------
 local function __getActiveRowByMode(tbl)
   for i = 1, 3 do
     local r = tbl and tbl[i]
@@ -1296,11 +1352,15 @@ local function __getActiveRowByMode(tbl)
   return nil, nil
 end
 
+-- --------------------------
+-- Estado por linha (qual BP está ativa)
+-- --------------------------
 local __bpActive = {
   ring   = { [1]=0, [2]=0, [3]=0 },
   amulet = { [1]=0, [2]=0, [3]=0 },
 }
 
+-- throttle por linha para abrir próxima / dropar
 local __bpTickUntil = {
   ring   = { [1]=0, [2]=0, [3]=0 },
   amulet = { [1]=0, [2]=0, [3]=0 },
@@ -1316,16 +1376,19 @@ local function __bpInteligenteTick(kind, idx, row, item2, item3)
   if (__bpTickUntil[kind][idx] or 0) > t then return end
   __bpTickUntil[kind][idx] = t + 250
 
+  -- define BP ativa inicial
   if (__bpActive[kind][idx] or 0) <= 0 then
     __bpActive[kind][idx] = baseBpId
   end
 
   local activeId = __bpActive[kind][idx]
 
+  -- 1) garantir BP ativa aberta sozinha
   __ensureBpIsOpen(activeId)
 
   local cont = __findBPContainer(activeId)
 
+  -- fallback: tenta a BP base
   if not cont and activeId ~= baseBpId then
     __bpActive[kind][idx] = baseBpId
     activeId = baseBpId
@@ -1335,6 +1398,7 @@ local function __bpInteligenteTick(kind, idx, row, item2, item3)
 
   if not cont then return end
 
+  -- 2) manter 1 slot livre
   __keepSlotFree(cont)
 
   -- 3) se acabou item2/item3, abre próxima BP dentro e troca activeId
@@ -1349,12 +1413,18 @@ local function __bpInteligenteTick(kind, idx, row, item2, item3)
       return
     end
 
+    -- ✅ CHEGOU NO ÚLTIMO: não tem item2/3 e não tem próxima BP -> fecha o container
     g_game.close(cont)
 
+    -- evita reabrir em loop (dorme 15s)
     __bpTickUntil[kind][idx] = __ms() + 30000
     return
   end
 end
+
+-- ==========================================================
+-- MACROS: BP Inteligente Ring / Amulet
+-- ==========================================================
 
 macro(200, function()
   if not storage["swapButton"] or storage["swapButton"].enabled ~= true then return end
@@ -1383,4 +1453,3 @@ macro(200, function()
 
   __bpInteligenteTick("amulet", idx, row, item2, item3)
 end)
-
