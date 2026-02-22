@@ -1,5 +1,5 @@
 setDefaultTab("Main")
-warn("SWAP ATUALIZADO")
+warn("SWAP ATT = SCRIPT & PAINEL")
 
 local switchSwap = "swapButton"
 if not storage[switchSwap] then storage[switchSwap] = { enabled = false } end
@@ -134,8 +134,20 @@ RingConfig < Panel
     anchors.right: ringEquipavelID.right
     anchors.top: ringPadrao.bottom
     margin-right: -10
+    margin-left: -2
     margin-top: 3
+    height: 22
     font: verdana-9px
+    image-source: /images/ui/button_rounded
+    image-color: #3a1010
+    $on:
+      color: #ffd37a
+      image-color: green
+      opacity: 1.00
+    $!on:
+      color: #b9b9b9
+      image-color: #2a2a2a
+      opacity: 0.95
 
   BotSwitch
     id: ativadorFull
@@ -144,7 +156,18 @@ RingConfig < Panel
     anchors.right: hpEquip.right
     anchors.top: ringPadrao.bottom
     margin-top: 3
+    height: 22
     font: verdana-9px
+    image-source: /images/ui/button_rounded
+    image-color: #3a1010
+    $on:
+      color: #ffd37a
+      image-color: green
+      opacity: 1.00
+    $!on:
+      color: #b9b9b9
+      image-color: #2a2a2a
+      opacity: 0.95
 
   VerticalSeparator
     id: vertSep
@@ -157,7 +180,7 @@ RingConfig < Panel
     id: backpack
     anchors.top: ringPadrao.top
     anchors.left: prev.right
-    margin-left: 33
+    margin-left: 30
     image-source: /images/game/slots/back-blessed
     $on:
       image-source: /images/ui/item-blessed
@@ -168,10 +191,21 @@ RingConfig < Panel
     anchors.left: vertSep.right
     anchors.bottom: ativador.bottom
     text: BP Inteligente
+    height: 22
     margin-top: 0
-    margin-left: 10
+    margin-left: 6
     text-auto-resize: true
     font: verdana-9px
+    image-source: /images/ui/button_rounded
+    image-color: #3a1010
+    $on:
+      color: #ffd37a
+      image-color: green
+      opacity: 1.00
+    $!on:
+      color: #b9b9b9
+      image-color: #2a2a2a
+      opacity: 0.95
 
 AmuletConfig < Panel
   height: 65
@@ -253,8 +287,20 @@ AmuletConfig < Panel
     anchors.right: amuletEquipavelID.right
     anchors.top: amuletPadrao.bottom
     margin-right: -10
+    margin-left: -2
     margin-top: 3
+    height: 22
     font: verdana-9px
+    image-source: /images/ui/button_rounded
+    image-color: #3a1010
+    $on:
+      color: #ffd37a
+      image-color: green
+      opacity: 1.00
+    $!on:
+      color: #b9b9b9
+      image-color: #2a2a2a
+      opacity: 0.95
 
   BotSwitch
     id: ativadorFull
@@ -263,7 +309,18 @@ AmuletConfig < Panel
     anchors.right: hpEquip.right
     anchors.top: amuletPadrao.bottom
     margin-top: 3
+    height: 22
     font: verdana-9px
+    image-source: /images/ui/button_rounded
+    image-color: #3a1010
+    $on:
+      color: #ffd37a
+      image-color: green
+      opacity: 1.00
+    $!on:
+      color: #b9b9b9
+      image-color: #2a2a2a
+      opacity: 0.95
 
   VerticalSeparator
     id: vertSep
@@ -276,7 +333,7 @@ AmuletConfig < Panel
     id: backpack
     anchors.top: amuletPadrao.top
     anchors.left: prev.right
-    margin-left: 33
+    margin-left: 30
     image-source: /images/game/slots/back-blessed
     $on:
       image-source: /images/ui/item-blessed
@@ -288,9 +345,20 @@ AmuletConfig < Panel
     anchors.bottom: ativador.bottom
     text: BP Inteligente
     margin-top: 0
-    margin-left: 10
+    margin-left: 6
     text-auto-resize: true
+    height: 22
     font: verdana-9px
+    image-source: /images/ui/button_rounded
+    image-color: #3a1010
+    $on:
+      color: #ffd37a
+      image-color: green
+      opacity: 1.00
+    $!on:
+      color: #b9b9b9
+      image-color: #2a2a2a
+      opacity: 0.95
 
 UIWindow
   id: panelSwap
@@ -305,8 +373,8 @@ UIWindow
     anchors.left: parent.left
     anchors.right: parent.right
     anchors.bottom: parent.bottom
-    background-color: black
-    opacity: 0.70
+    background-color: #0b0b0b
+    opacity: 0.88
 
   Panel
     id: topPanel
@@ -315,14 +383,15 @@ UIWindow
     anchors.right: parent.right
     size: 120 30
     text-align: center
-    !text: tr('LNS Custom | Smart Swap [Ring & Amulet]')
+    !text: tr('LNS Custom | Smart Swap')
+    background-color: #111111
+    opacity: 1.00
+    border: 1 #1f1f1f
     color: orange
+    font: verdana-11px-rounded
     margin-left: 0
     margin-right: 0
-    background-color: black
-    $hover:
-      image-color: gray
-  
+
   Panel
     id: iconPanel
     anchors.top: topPanel.top
@@ -350,11 +419,11 @@ UIWindow
     id: Ring
     anchors.top: topPanel.bottom
     anchors.left: topPanel.left
-    size: 80 20
+    size: 80 22
     text: RING
     image-source: /images/ui/button_rounded
     image-color: #363636
-    margin-left: 5
+    margin-left: 9
     margin-top: 5
     font: verdana-9px
     color: white
@@ -363,14 +432,14 @@ UIWindow
     id: Amulet
     anchors.top: prev.top
     anchors.left: prev.right
-    size: 80 20
+    size: 80 22
     text: AMULET
     image-source: /images/ui/button_rounded
     image-color: #363636
     font: verdana-9px
     color: white
 
-  FlatPanel
+  Panel
     id: abaRing
     anchors.top: prev.bottom
     anchors.bottom: parent.bottom
@@ -378,29 +447,31 @@ UIWindow
     anchors.right: parent.right
     margin-top: 2
     margin-bottom: 10
-    margin-left: 5
-    margin-right: 5
+    margin-left: 10
+    margin-right: 10
     padding-left: 10
     padding-top: -10
-    image-color: #363636
+    background-color: #1b1b1b
+    border: 1 #3b2a10
+    opacity: 0.95
     layout: verticalBox
 
     RingConfig
       id: ring1
-      margin-left: 5
+      margin-left: -8
       size: 330 70
 
     RingConfig
       id: ring2
-      margin-left: 5
+      margin-left: -8
       size: 330 70
 
     RingConfig
       id: ring3
-      margin-left: 5
+      margin-left: -8
       size: 330 70
 
-  FlatPanel
+  Panel
     id: abaAmulet
     anchors.top: abaRing.top
     anchors.bottom: abaRing.bottom
@@ -408,29 +479,31 @@ UIWindow
     anchors.right: abaRing.right
     padding-left: 10
     padding-top: -10
-    image-color: #363636
+    background-color: #1b1b1b
+    border: 1 #3b2a10
+    opacity: 0.95
     layout: verticalBox
 
     AmuletConfig
       id: amulet1
-      margin-left: 5
+      margin-left: -8
       size: 330 70
 
     AmuletConfig
       id: amulet2
-      margin-left: 5
+      margin-left: -8
       size: 330 70
 
     AmuletConfig
       id: amulet3
-      margin-left: 5
+      margin-left: -8
       size: 330 70
 
 ]], g_ui.getRootWidget())
 
 panelSwap:hide()
 panelSwap.abaRing:show()
-panelSwap.Ring:setColor("yellow")
+panelSwap.Ring:setColor("#ffd37a")
 panelSwap.abaAmulet:hide()
 
 swapButton.settings.onClick = function()
@@ -442,7 +515,7 @@ panelSwap.closePanel.onClick = function()
 end
 
 panelSwap.Ring.onClick = function()
-  panelSwap.Ring:setColor("yellow")
+  panelSwap.Ring:setColor("#ffd37a")
   panelSwap.Amulet:setColor("gray")
   panelSwap.abaRing:show()
   panelSwap.abaAmulet:hide()
@@ -450,7 +523,7 @@ end
 
 panelSwap.Amulet.onClick = function()
   panelSwap.Ring:setColor("gray")
-  panelSwap.Amulet:setColor("yellow")
+  panelSwap.Amulet:setColor("#ffd37a")
   panelSwap.abaRing:hide()
   panelSwap.abaAmulet:show()
 end
@@ -536,8 +609,8 @@ local function bindEquipUnequipPair(sbEquip, sbUnequip, lbEquip, lbUnequip, stor
 
   if sbEquip.setValue then sbEquip:setValue(e) end
   if sbUnequip.setValue then sbUnequip:setValue(u) end
-  setLabel(lbEquip, "Equip: ", e)
-  setLabel(lbUnequip, "Unequip: ", u)
+  setLabel(lbEquip, "equip: ", e)
+  setLabel(lbUnequip, "unequip: ", u)
 
   sbEquip.onValueChange = function(_, value)
     value = tonumber(value) or 0
@@ -545,14 +618,14 @@ local function bindEquipUnequipPair(sbEquip, sbUnequip, lbEquip, lbUnequip, stor
     if value > 100 then value = 100 end
 
     store[keyEquip] = value
-    setLabel(lbEquip, "Equip: ", value)
+    setLabel(lbEquip, "equip: ", value)
 
     local curU = tonumber(store[keyUnequip]) or (sbUnequip.getValue and sbUnequip:getValue()) or 0
     if curU < value then
       curU = value
       store[keyUnequip] = curU
       if sbUnequip.setValue then sbUnequip:setValue(curU) end
-      setLabel(lbUnequip, "Unequip: ", curU)
+      setLabel(lbUnequip, "unequip: ", curU)
     end
   end
 
@@ -566,7 +639,7 @@ local function bindEquipUnequipPair(sbEquip, sbUnequip, lbEquip, lbUnequip, stor
 
     store[keyUnequip] = value
     if sbUnequip.setValue then sbUnequip:setValue(value) end
-    setLabel(lbUnequip, "Unequip: ", value)
+    setLabel(lbUnequip, "unequip: ", value)
   end
 end
 
@@ -656,10 +729,10 @@ local function bindRingRow(rowWidget, idx)
   bindBotItem(rowWidget.ringPadrao,      rowStore, "ringPadrao")
   bindBotItem(rowWidget.ringEquipavel,   rowStore, "ringEquipavel",   d.ringEquipavel)
   bindBotItem(rowWidget.ringEquipavelID, rowStore, "ringEquipavelID", d.ringEquipavelID)
-  bindExclusivePair(rowWidget.ativador, rowWidget.ativadorFull, rowStore, "ativador", "ativadorFull", "Swap Ring " .. idx, "Equip Full")
+  bindExclusivePair(rowWidget.ativador, rowWidget.ativadorFull, rowStore, "ativador", "ativadorFull", "SWAP RING " .. idx, "EQUIP FULL")
 
   bindBotItem(rowWidget.backpack,        rowStore, "backpack", d.backpack)
-  bindBotSwitch(rowWidget.ativadorBP,    rowStore, "ativadorBP", false, "BP Inteligente")
+  bindBotSwitch(rowWidget.ativadorBP,    rowStore, "ativadorBP", false, "BP CONTROL")
   
   bindEquipUnequipPair(
     rowWidget.hpEquip, rowWidget.hpDesequip,
@@ -676,10 +749,10 @@ local function bindAmuletRow(rowWidget, idx)
   bindBotItem(rowWidget.amuletPadrao,      rowStore, "amuletPadrao")
   bindBotItem(rowWidget.amuletEquipavel,   rowStore, "amuletEquipavel",   d.amuletEquipavel)
   bindBotItem(rowWidget.amuletEquipavelID, rowStore, "amuletEquipavelID", d.amuletEquipavelID)
-  bindExclusivePair(rowWidget.ativador, rowWidget.ativadorFull, rowStore, "ativador", "ativadorFull", "Swap Amulet " .. idx, "Equip Full")
+  bindExclusivePair(rowWidget.ativador, rowWidget.ativadorFull, rowStore, "ativador", "ativadorFull", "SWAP AMULET " .. idx, "EQUIP FULL")
 
   bindBotItem(rowWidget.backpack,          rowStore, "backpack", d.backpack)
-  bindBotSwitch(rowWidget.ativadorBP,      rowStore, "ativadorBP", false, "BP Inteligente")
+  bindBotSwitch(rowWidget.ativadorBP,      rowStore, "ativadorBP", false, "BP CONTROL")
 
   bindEquipUnequipPair(
     rowWidget.hpEquip, rowWidget.hpDesequip,
@@ -1454,4 +1527,3 @@ macro(200, function()
 
   __bpInteligenteTick("amulet", idx, row, item2, item3)
 end)
-
