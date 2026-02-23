@@ -2363,8 +2363,6 @@ macro(100, function()
           if rid > 0 then
             if (not userRune or userRune <= now) then
               useWith(rid, target)
-              useWith(rid, target)
-              delay(1000)
               action.nextCast = now + SPAM_DELAY
             end
             return
@@ -2374,3 +2372,4 @@ macro(100, function()
     end
   end
 end)
+
