@@ -1,5 +1,4 @@
 local switchCombo = "comboButton"
-warn("ATTACKBOT ATUALIZADO")
 
 if not storage[switchCombo] then
     storage[switchCombo] = { enabled = false }
@@ -2225,3 +2224,4 @@ macro(100, function()
     end
   end
 end)
+
