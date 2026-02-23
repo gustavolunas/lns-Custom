@@ -1,6 +1,4 @@
 setDefaultTab("Main")
-warn("SWAP ATT = SCRIPT & PAINEL")
-
 local switchSwap = "swapButton"
 if not storage[switchSwap] then storage[switchSwap] = { enabled = false } end
 
@@ -1527,3 +1525,4 @@ macro(200, function()
 
   __bpInteligenteTick("amulet", idx, row, item2, item3)
 end)
+
