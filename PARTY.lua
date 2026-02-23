@@ -376,7 +376,7 @@ if not storage[panelName] then
   storage[panelName] = {
     leaderName = "Leader",
     autoPartyList = {},
-    enabled = true,
+    enabled = false,
     onMove = false,
     soulider = false,
     autoShare = false,
@@ -1079,4 +1079,5 @@ macro(200, function()
     end
   end
 end)
+
 
