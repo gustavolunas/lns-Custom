@@ -1,4 +1,4 @@
-local moveDist = 5UI.Separator()
+local moveDist = UI.Separator()
 
 local iconUtilitys = setupUI([[
 Panel
