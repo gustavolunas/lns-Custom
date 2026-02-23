@@ -1,4 +1,4 @@
-UI.Separator()
+local moveDist = 5UI.Separator()
 
 local iconUtilitys = setupUI([[
 Panel
@@ -576,11 +576,11 @@ macro(500, function()
   end
 end)
 
-local moveTime = 2000
-local moveDist = 5
-local useTime = 2000
+local moveTime = 1000
+local moveDist = 1
+local useTime = 1000
 local useDistance = 1
-local waitTime = 2000
+local waitTime = 1000
 
 macro(200, function()
   if storage.utilityToggles["abrirPortas"] ~= true then return end
