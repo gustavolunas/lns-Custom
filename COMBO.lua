@@ -1,13 +1,10 @@
 local switchCombo = "comboButton"
+warn("ATTACKBOT ATUALIZADO")
 
 if not storage[switchCombo] then
     storage[switchCombo] = { enabled = false }
 end
 
-
--- =========================================
--- SUA UI
--- =========================================
 comboButton = setupUI([[
 Panel
   height: 20
@@ -50,47 +47,58 @@ Panel
 comboButton:setId(switchCombo)
 comboButton.title:setOn(storage[switchCombo].enabled)
 
-
--- clique protegido (mesmo que setEnabled falhe em algum client)
 comboButton.title.onClick = function(widget)
   local newState = not widget:isOn()
   widget:setOn(newState)
   storage[switchCombo].enabled = newState
 end
 
-
-comboInterface = setupUI([[
+comboInterface = setupUI([=[
 UIWindow
   id: mainPanel
-  size: 400 400
-  border: 1 black
+  size: 350 410
   anchors.centerIn: parent
   margin-top: -60
+  opacity: 1.00
 
   Panel
     id: background
-    anchors.top: parent.top
-    anchors.left: parent.left
-    anchors.right: parent.right
-    anchors.bottom: parent.bottom
-    background-color: black
-    opacity: 0.70
+    anchors.fill: parent
+    background-color: #0b0b0b
+    opacity: 0.88
 
   Panel
-    id: topPanel
+    id: topBar
     anchors.top: parent.top
     anchors.left: parent.left
     anchors.right: parent.right
-    size: 120 30
-    text-align: center
-    !text: tr('LNS Custom | Combat AI')
+    height: 30
+    background-color: #111111
+    opacity: 1.00
+    border: 1 #1f1f1f
+
+  Label
+    id: titleLabel
+    anchors.centerIn: topBar
+    text: LNS Custom | Combat AI
+    text-auto-resize: true
     color: orange
-    margin-left: 0
-    margin-right: 0
-    background-color: black
+    font: verdana-11px-rounded
+
+  UIButton
+    id: closePanel
+    anchors.right: topBar.right
+    anchors.verticalCenter: topBar.verticalCenter
+    size: 20 20
+    margin-right: 8
+    text: X
+    background-color: orange
+    color: white
+    opacity: 1.00
     $hover:
-      image-color: gray
-  
+      color: black
+      opacity: 0.85
+
   Panel
     id: iconPanel
     anchors.top: parent.top
@@ -99,76 +107,40 @@ UIWindow
     margin-top: -19
     margin-left: -15
 
-  UIButton
-    id: closePanel
-    anchors.top: topPanel.top
-    anchors.right: parent.right
-    size: 18 18
-    margin-top: 6
-    margin-right: 10
-    background-color: orange
-    text: X
-    color: white
-    opacity: 1.00
-    $hover:
-      color: black
-      opacity: 0.80
-
-  FlatPanel
-    id: panelMain
-    anchors.top: prev.bottom
-    anchors.right: parent.right
+  Panel
+    id: cardsRow
+    anchors.top: topBar.bottom
     anchors.left: parent.left
-    margin-top: 18
-    margin-right: 8
-    margin-left: 8
-    height: 160
-    image-color: #363636
-    layout: verticalBox
-
-  Label
-    id: labelHealing
-    anchors.top: prev.top
-    anchors.left: panelMain.left
-    text: CONFIGURATION SPELLS:
-    text-auto-resize: true
-    font: verdana-9px-italic
-    margin-top: -5
+    anchors.right: parent.right
+    margin-top: 8
     margin-left: 10
+    margin-right: 10
+    height: 150
+    background-color: alpha
 
-  BotSwitch
-    id: offHealing
-    anchors.top: prev.top
-    anchors.left: prev.right
-    image-souce: /images/ui/button_rounded
-    image-color: #363636
-    margin-left: 5
-    margin-top: -3
-    width: 60
-    $!on:
-      opacity: 0.70
-      image-color: #363636
-      text: OFFLINE
-      color: red
-    $on:
-      opacity: 1.00
-      color: #7CFC00
-      text: ONLINE
-      image-color: #363636
-      
+  Panel
+    id: cardSpells
+    anchors.top: cardsRow.top
+    anchors.left: cardsRow.left
+    anchors.right: cardsRow.right
+    height: 150
+    opacity: 0.95
+    border: 1 alpha
+
   TextList
-    opacity: 1.00
     id: spellList
-    anchors.left: panelMain.left
-    anchors.right: panelMain.right
-    anchors.top: labelHealing.bottom
+    anchors.top: cardSpells.top
+    anchors.left: cardSpells.left
+    anchors.right: cardSpells.right
+    margin-top: 0
+    margin-left: 0
+    margin-right: 12
+    height: 120
     padding: 1
-    height: 120 
-    margin-top: 5
-    margin-left: 5
-    margin-right: 17
     vertical-scrollbar: spellListScrollBar
-    image-color: #363636
+    image-color: #1b1b1b
+    opacity: 0.95
+    border: 1 #3b2a10
 
   VerticalScrollBar
     id: spellListScrollBar
@@ -178,168 +150,287 @@ UIWindow
     step: 10
     pixels-scroll: true
     visible: true
+    border: 1 #1f1f1f
     image-color: #363636
     opacity: 0.90
+    margin-left: 0
+
+  Panel
+    id: spellsButtonsRow
+    anchors.left: cardSpells.left
+    anchors.right: cardSpells.right
+    anchors.bottom: cardSpells.bottom
+    height: 30
+    margin-bottom: 3
+    background-color: alpha
 
   Button
     id: adicionarSpell
-    anchors.left: spellList.left
-    anchors.top: spellList.bottom
+    anchors.left: spellsButtonsRow.left
+    anchors.verticalCenter: spellsButtonsRow.verticalCenter
+    margin-left: 0
     image-source: /images/ui/button_rounded
-    size: 80 25
-    margin-top: 2
-    image-color: #363636
-    text: Add Spell
-    font: verdana-11px-rounded
-    color: gray
+    size: 110 22
+    image-color: #2a2a2a
+    text: ADICIONAR SPELL
+    font: verdana-9px
+    color: #b9b9b9
 
   Button
     id: adicionarRuna
     anchors.left: adicionarSpell.right
-    anchors.top: spellList.bottom
+    anchors.verticalCenter: adicionarSpell.verticalCenter
+    margin-left: 3
     image-source: /images/ui/button_rounded
-    size: 80 25
-    margin-top: 2
-    image-color: #363636
-    text: Add Rune
-    font: verdana-11px-rounded
-    color: gray
-
-  Button
-    id: moveUp
-    anchors.right: spellListScrollBar.right
-    anchors.top: spellList.bottom
-    image-source: /images/ui/button_rounded
-    size: 25 25
-    margin-top: 2
-    image-color: #363636
-    text: /\
-    font: verdana-11px-rounded
-    color: gray
+    size: 110 22
+    image-color: #2a2a2a
+    text: ADICIONAR RUNA
+    font: verdana-9px
+    color: #b9b9b9
 
   Button
     id: moveDown
-    anchors.right: moveUp.left
-    anchors.top: spellList.bottom
+    anchors.right: spellsButtonsRow.right
+    anchors.verticalCenter: spellsButtonsRow.verticalCenter
+    margin-right: 0
     image-source: /images/ui/button_rounded
-    size: 25 25
-    margin-top: 2
-    image-color: #363636
+    size: 28 22
+    image-color: #2a2a2a
     text: \/
-    font: verdana-11px-rounded
-    color: gray
+    font: verdana-9px
+    color: #b9b9b9
 
-  FlatPanel
-    id: panelTools
-    anchors.top: panelMain.bottom
-    anchors.right: parent.right
+  Button
+    id: moveUp
+    anchors.right: moveDown.left
+    anchors.verticalCenter: moveDown.verticalCenter
+    margin-right: 1
+    image-source: /images/ui/button_rounded
+    size: 28 22
+    image-color: #2a2a2a
+    text: /\
+    font: verdana-9px
+    color: #b9b9b9
+
+  Panel
+    id: infolist2
+    anchors.top: cardsRow.bottom
     anchors.left: parent.left
-    margin-top: 8
-    margin-right: 8
-    margin-left: 8
-    height: 180
-    image-color: #363636
-    layout: verticalBox
-
-  Label
-    id: labelTools
-    anchors.top: prev.top
-    anchors.left: panelMain.left
-    text: CONFIG ATTACKER:
-    text-auto-resize: true
-    font: verdana-9px-italic
-    margin-top: -5
+    anchors.right: parent.right
+    margin-top: 0
     margin-left: 10
-
-  CheckBox
-    id: virarTarget
-    anchors.top: labelTools.bottom
-    anchors.left: labelTools.left
-    text: Virar Target
+    margin-right: 10
+    text: ANTI-RED & TOOLS
+    font: verdana-9px
+    background-color: black
+    border: 1 #1f1f1f
+    color: #d7c08a
     text-auto-resize: true
-    font: verdana-11px-rounded
-    color: gray
-    image-source: /images/ui/checkbox_round
-    margin-top: 10
 
-  CheckBox
-    id: manterDist
-    anchors.top: prev.bottom
-    anchors.left: prev.left
-    text: Manter Distancia
-    text-auto-resize: true
-    font: verdana-11px-rounded
-    image-source: /images/ui/checkbox_round
-    color: gray
-    margin-top: 10
+  Panel
+    id: actions
+    anchors.top: infolist2.bottom
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.bottom: parent.bottom
+    margin-bottom: 10
+    margin-left: 10
+    margin-right: 10
+    margin-top: 2
+    background-color: #141414
+    opacity: 0.92
+    border: 1 #3b2a10
 
-  CheckBox
-    id: IgnoreParty
-    anchors.top: prev.bottom
-    anchors.left: prev.left
-    text: Checar Players
-    text-auto-resize: true
-    font: verdana-11px-rounded
-    image-source: /images/ui/checkbox_round
-    color: gray
-    margin-top: 10
+  Panel
+    id: panelTools
+    anchors.top: infolist2.bottom
+    anchors.left: actions.left
+    anchors.right: actions.right
+    anchors.bottom: actions.bottom
+    margin-top: 6
+    margin-left: 0
+    margin-right: 0
+    margin-bottom: 0
+    background-color: alpha
 
-  CheckBox
-    id: stopOnPk
-    anchors.top: prev.bottom
-    anchors.left: prev.left
-    text: OFF PK/Frags
-    text-auto-resize: true
-    font: verdana-11px-rounded
-    image-source: /images/ui/checkbox_round
-    color: gray
-    margin-top: 10
-
-  CheckBox
-    id: CheckStairs
-    anchors.top: stopOnPk.bottom
-    anchors.left: stopOnPk.left
-    text: Checar Stairs
-    text-auto-resize: true
-    font: verdana-11px-rounded
-    image-source: /images/ui/checkbox_round
-    color: gray
-    margin-top: 10
+  Panel
+    id: rowSqm
+    anchors.top: panelTools.top
+    anchors.left: panelTools.left
+    anchors.right: panelTools.right
+    height: 30
+    background-color: alpha
 
   Label
     id: labelSqm
-    anchors.top: virarTarget.top
-    anchors.left: prev.right
-    text: Safe SQM:
+    anchors.left: rowSqm.left
+    anchors.verticalCenter: rowSqm.verticalCenter
+    margin-left: 10
+    text: REALIZAR CHECAGEM DE SQMS
+    font: verdana-9px
+    color: #d7c08a
     text-auto-resize: true
-    margin-top: -5
-    font: verdana-11px-rounded
-    margin-left: 147
-    color: gray
-    
+
   SpinBox
     id: sqmSafe
-    anchors.top: virarTarget.top
-    anchors.left: prev.right
-    size: 50 20
-    margin-top: -10
-    image-color: gray
+    anchors.right: rowSqm.right
+    anchors.verticalCenter: rowSqm.verticalCenter
+    margin-right: 10
+    size: 62 22
     minimum: 1
-    maximum: 8
+    maximum: 10
     step: 1
-    text-align: center
+    image-color: #2f2f2f
+    color: white
+    font: verdana-9px
+
+  Panel
+    id: rowVirar
+    anchors.top: rowSqm.bottom
+    anchors.left: panelTools.left
+    anchors.right: panelTools.right
+    margin-top: -5
+    height: 30
+    background-color: alpha
+
+  BotSwitch
+    id: virarTarget
+    anchors.left: rowVirar.left
+    anchors.verticalCenter: rowVirar.verticalCenter
+    margin-left: 10
+    width: 22
+    height: 22
+    text: ""
+    image-source: /images/ui/button_rounded
+    image-color: #2a2a2a
+    $on:
+      image-color: green
+    $!on:
+      image-color: #2a2a2a
+
+  Label
+    id: labelVirarTgt
+    anchors.left: virarTarget.right
+    anchors.verticalCenter: virarTarget.verticalCenter
+    margin-left: 10
+    text: VIRAR DIRECAO TARGET
+    font: verdana-9px
+    color: #d7c08a
+    text-auto-resize: true
+
+  Panel
+    id: rowDist
+    anchors.top: rowVirar.bottom
+    anchors.left: panelTools.left
+    anchors.right: panelTools.right
+    height: 30
+    background-color: alpha
+
+  BotSwitch
+    id: manterDist
+    anchors.left: rowDist.left
+    anchors.verticalCenter: rowDist.verticalCenter
+    margin-left: 10
+    width: 22
+    height: 22
+    text: ""
+    image-source: /images/ui/button_rounded
+    image-color: #2a2a2a
+    $on:
+      image-color: green
+    $!on:
+      image-color: #2a2a2a
+
+  Label
+    id: lblManterDist
+    anchors.left: manterDist.right
+    anchors.verticalCenter: manterDist.verticalCenter
+    margin-left: 10
+    text: MANTER DISTANCIA
+    font: verdana-9px
+    color: #d7c08a
+    text-auto-resize: true
+
+  Panel
+    id: rowPlayers
+    anchors.top: rowDist.bottom
+    anchors.left: panelTools.left
+    anchors.right: panelTools.right
+    height: 30
+    background-color: alpha
+
+  BotSwitch
+    id: IgnoreParty
+    anchors.left: rowPlayers.left
+    anchors.verticalCenter: rowPlayers.verticalCenter
+    margin-left: 10
+    width: 22
+    height: 22
+    text: ""
+    image-source: /images/ui/button_rounded
+    image-color: #2a2a2a
+    $on:
+      image-color: green
+    $!on:
+      image-color: #2a2a2a
+
+  Label
+    id: lblIgnoreParty
+    anchors.left: IgnoreParty.right
+    anchors.verticalCenter: IgnoreParty.verticalCenter
+    margin-left: 10
+    text: CHECAR PLAYERS
+    font: verdana-9px
+    color: #d7c08a
+    text-auto-resize: true
+
+  Panel
+    id: rowStairs
+    anchors.top: rowPlayers.bottom
+    anchors.left: panelTools.left
+    anchors.right: panelTools.right
+    height: 30
+    background-color: alpha
+
+  BotSwitch
+    id: CheckStairs
+    anchors.left: rowStairs.left
+    anchors.verticalCenter: rowStairs.verticalCenter
+    margin-left: 10
+    width: 22
+    height: 22
+    text: ""
+    image-source: /images/ui/button_rounded
+    image-color: #2a2a2a
+    $on:
+      image-color: green
+    $!on:
+      image-color: #2a2a2a
+
+  Label
+    id: lblCheckStairs
+    anchors.left: CheckStairs.right
+    anchors.verticalCenter: CheckStairs.verticalCenter
+    margin-left: 10
+    text: CHECAR STAIRS
+    font: verdana-9px
+    color: #d7c08a
+    text-auto-resize: true
 
   Panel
     id: idsSafeAndares
-    anchors.top: CheckStairs.bottom
-    anchors.left: CheckStairs.left
-    anchors.right: parent.right
+    anchors.top: prev.bottom
+    margin-top: 10
+    anchors.left: panelTools.left
+    anchors.right: panelTools.right
     anchors.bottom: panelTools.bottom
-    margin-right: 15
-    margin-top: 5
+    margin-left: 10
+    margin-right: 10
+    margin-bottom: 10
     height: 74
-    
-]], g_ui.getRootWidget())
+    background-color: alpha
+
+]=], g_ui.getRootWidget())
 comboInterface:hide();
 
 comboInterface.closePanel.onClick = function()
@@ -354,10 +445,10 @@ comboButton.settings.onClick = function()
     end
 end
 
-spellAddPanel = setupUI([[
+spellAddPanel = setupUI([=[
 UIWindow
   id: spellAddPanel
-  size: 260 280
+  size: 260 290
   border: 1 black
   anchors.centerIn: parent
   margin-top: -60
@@ -379,12 +470,11 @@ UIWindow
     size: 120 30
     text-align: center
     !text: tr('LNS Custom | Combat AI - Spell Add')
+    font: verdana-11px-rounded
     color: orange
-    margin-left: 0
-    margin-right: 0
-    background-color: black
-    $hover:
-      image-color: gray
+    background-color: #111111
+    opacity: 1.00
+    border: 1 #1f1f1f
   
   Panel
     id: iconPanel
@@ -394,7 +484,7 @@ UIWindow
     margin-top: -19
     margin-left: -15
 
-  FlatPanel
+  Panel
     id: panelMain
     anchors.top: prev.bottom
     anchors.right: parent.right
@@ -402,8 +492,10 @@ UIWindow
     margin-top: -7
     margin-right: 8
     margin-left: 8
-    height: 215
-    image-color: #363636
+    height: 225
+    background-color: #1b1b1b
+    opacity: 0.95
+    border: 1 #3b2a10
 
     Label
       id: magiaLabel
@@ -416,15 +508,18 @@ UIWindow
       margin-right: 10
       margin-top: 5
       text-auto-resize: true
-      font: verdana-9px-italic
+      font: verdana-9px
 
-    BotTextEdit
+    TextEdit
       id: magia
       anchors.top: prev.bottom
       anchors.left: prev.left
       anchors.right: prev.right
       margin-top: 3
       image-color: gray
+      font: verdana-9px
+      placeholder: INSERT SPELL HERE!
+      placeholder-font: verdana-9px
 
     Label
       id: distanceLabel
@@ -435,7 +530,7 @@ UIWindow
       text-align: left
       text: DISTANCE:
       text-auto-resize: true
-      font: verdana-9px-italic
+      font: verdana-9px
 
     HorizontalScrollBar
       id: distance
@@ -456,7 +551,7 @@ UIWindow
       text-align: left
       text: MANA:
       text-auto-resize: true
-      font: verdana-9px-italic
+      font: verdana-9px
 
     HorizontalScrollBar
       id: mana
@@ -477,7 +572,7 @@ UIWindow
       text-align: left
       text: MOBS:
       text-auto-resize: true
-      font: verdana-9px-italic
+      font: verdana-9px
 
     HorizontalScrollBar
       id: mobs
@@ -498,7 +593,7 @@ UIWindow
       text-align: left
       text: COOLDOWN:
       text-auto-resize: true
-      font: verdana-9px-italic
+      font: verdana-9px
 
     HorizontalScrollBar
       id: cooldown
@@ -531,7 +626,7 @@ UIWindow
       text: SPELL SAFE ?
       image-source: /images/ui/checkbox_round
       text-auto-resize: true
-      font: verdana-9px-italic
+      font: verdana-9px
 
   Button
     id: cancelarBt
@@ -541,8 +636,8 @@ UIWindow
     size: 122 25
     margin-top: 2
     image-color: #363636
-    text: Cancelar
-    font: verdana-11px-rounded
+    text: CANCELAR
+    font: verdana-9px
     color: gray
     $hover:
       color: #FF4040
@@ -555,19 +650,19 @@ UIWindow
     size: 122 25
     margin-top: 2
     image-color: #363636
-    text: Adicionar
-    font: verdana-11px-rounded
+    text: ADICIONAR
+    font: verdana-9px
     color: gray
     $hover:
       color: #98FB98
 
-]], g_ui.getRootWidget())
-spellAddPanel:hide()
+]=], g_ui.getRootWidget())
+spellAddPanel:show()
 
-runeAddPanel = setupUI([[
+runeAddPanel = setupUI([=[
 UIWindow
   id: runeAddPanel
-  size: 260 208
+  size: 220 208
   border: 1 black
   anchors.centerIn: parent
   margin-top: -60
@@ -588,13 +683,13 @@ UIWindow
     anchors.right: parent.right
     size: 120 30
     text-align: center
-    !text: tr('LNS Custom | Combat AI - Rune Add')
+    !text: tr('LNS Custom | Combat AI - Rune')
     color: orange
-    margin-left: 0
-    margin-right: 0
-    background-color: black
-    $hover:
-      image-color: gray
+    font: verdana-11px-rounded
+    color: orange
+    background-color: #111111
+    opacity: 1.00
+    border: 1 #1f1f1f
   
   Panel
     id: iconPanel
@@ -604,7 +699,7 @@ UIWindow
     margin-top: -19
     margin-left: -15
 
-  FlatPanel
+  Panel
     id: panelMain
     anchors.top: prev.bottom
     anchors.right: parent.right
@@ -613,7 +708,9 @@ UIWindow
     margin-right: 8
     margin-left: 8
     height: 145
-    image-color: #363636
+    background-color: #1b1b1b
+    opacity: 0.95
+    border: 1 #3b2a10
 
     Label
       id: runaLabel
@@ -624,28 +721,29 @@ UIWindow
       text: ID RUNA:
       margin-left: 10
       margin-right: 10
-      margin-top: 5
+      margin-top: 18
       text-auto-resize: true
-      font: verdana-9px-italic
+      font: verdana-9px
 
-    BotTextEdit
+    BotItem
       id: runa
-      anchors.top: prev.bottom
-      anchors.left: prev.left
-      anchors.right: prev.right
-      margin-top: 3
-      image-color: gray
+      anchors.top: prev.top
+      anchors.right: parent.right
+      margin-right: 10
+      margin-top: -5
+      image-source: /images/ui/item-blessed
 
     Label
       id: distanceLabel
       anchors.top: prev.bottom
-      anchors.left: prev.left
-      anchors.right: prev.right
-      margin-top: 10
+      anchors.left: runaLabel.left
+      anchors.right: parent.right
+      margin-top: 2
+      margin-right: 10
       text-align: left
       text: DISTANCE:
       text-auto-resize: true
-      font: verdana-9px-italic
+      font: verdana-9px
 
     HorizontalScrollBar
       id: distance
@@ -666,7 +764,7 @@ UIWindow
       text-align: left
       text: MOBS:
       text-auto-resize: true
-      font: verdana-9px-italic
+      font: verdana-9px
 
     HorizontalScrollBar
       id: mobs
@@ -687,7 +785,7 @@ UIWindow
       text-align: left
       text: COOLDOWN:
       text-auto-resize: true
-      font: verdana-9px-italic
+      font: verdana-9px
       visible: false
 
     HorizontalScrollBar
@@ -720,21 +818,21 @@ UIWindow
       anchors.right: mobs.right
       margin-top: 12
       text-align: left
-      text: RUNA SAFE ?
+      text: RUNA SAFE?
       image-source: /images/ui/checkbox_round
       text-auto-resize: true
-      font: verdana-9px-italic
+      font: verdana-9px
 
   Button
     id: cancelarBt
     anchors.left: panelMain.left
     anchors.top: panelMain.bottom
     image-source: /images/ui/button_rounded
-    size: 122 25
+    size: 102 25
     margin-top: 2
     image-color: #363636
-    text: Cancelar
-    font: verdana-11px-rounded
+    text: CANCELAR
+    font: verdana-9px
     color: gray
     $hover:
       color: #FF4040
@@ -744,39 +842,20 @@ UIWindow
     anchors.right: panelMain.right
     anchors.top: panelMain.bottom
     image-source: /images/ui/button_rounded
-    size: 122 25
+    size: 102 25
     margin-top: 2
     image-color: #363636
-    text: Adicionar
-    font: verdana-11px-rounded
+    text: ADICIONAR
+    font: verdana-9px
     color: gray
     $hover:
       color: #98FB98
 
-]], g_ui.getRootWidget())
+]=], g_ui.getRootWidget())
 runeAddPanel:hide()
-
--- =========================================================
--- COMBO PANEL (SPELL + RUNE) - STORAGE GLOBAL (SEM JSON)
--- - 2 AddPanels: spellAddPanel / runeAddPanel
--- - spellList: CheckBox enable + icone (runa) OU nome da spell
--- - Botao X no fim da linha para deletar
--- - Clique seleciona (focus), duplo clique edita (abre painel correto)
--- - MoveUp/MoveDown reordena (swap no storage)
--- - SafeIdsAndares via UI.Container (global)
---
--- + AUTO COOLDOWN:
---   - Spell: calcula via onTalk (speak 2x) pelo botão "!"
---   - Rune: calcula via missile e aprende missileId automaticamente
---   - FIX IMPORTANTE: setValue() do ScrollBar pode NAO disparar onValueChange
---     então salvamos em cfg.draft + chamamos onValueChange manualmente.
--- =========================================================
 
 local STORAGE_KEY = "combo_actions_global_v1"
 
--- =========================================================
--- UTIL
--- =========================================================
 local function deepCopy(t)
   if type(t) ~= "table" then return t end
   local r = {}
@@ -827,7 +906,6 @@ local function nowMs()
   return (os.time() * 1000) + math.floor((os.clock() * 1000) % 1000)
 end
 
--- tenta pegar sprite de item (OTCv8 costuma ter g_things)
 local function setItemIcon(widget, itemId)
   if not widget then return end
   itemId = tonumber(itemId)
@@ -845,29 +923,25 @@ local function setItemIcon(widget, itemId)
   end
 end
 
--- =========================================================
--- DEFAULT CFG
--- =========================================================
 local function defaultCfg()
   return {
     main = {
       enabled = true,
       virarTarget = false,
       manterDist  = false,
-      checkStairs = true,
+      checkStairs = false,
       ignoreParty = false,
-      stopOnPk    = true,
-      sqmSafe     = 8,
+      checkAndares    = false,
+      sqmSafe     = 5,
       safeIdsAndares = {435, 1948, 386},
     },
     actions = {
       -- { type="spell", enabled=true, spell="exori gran", dist=3, mana=200, mobs=2, cd=1200, safe=true }
       -- { type="rune",  enabled=true, runeId=3155,        dist=7, mana=0,   mobs=1, cd=800,  safe=false }
     },
-    -- cache do formulário (não depende de onValueChange do scrollbar)
     draft = {
       spell = { cd = 0 },
-      rune  = { cd = 0 },
+      rune  = { cd = 0, id = 0 },
     }
   }
 end
@@ -884,7 +958,6 @@ local function mergeDefaults(dst, def)
   return dst
 end
 
--- init storage global
 storage[STORAGE_KEY] = mergeDefaults(storage[STORAGE_KEY], defaultCfg())
 local cfg = storage[STORAGE_KEY]
 
@@ -892,9 +965,9 @@ if type(cfg.main.safeIdsAndares) ~= "table" then cfg.main.safeIdsAndares = {435,
 if type(cfg.actions) ~= "table" then cfg.actions = {} end
 cfg.draft = cfg.draft or { spell = { cd = 0 }, rune = { cd = 0 } }
 cfg.draft.spell = cfg.draft.spell or { cd = 0 }
-cfg.draft.rune  = cfg.draft.rune  or { cd = 0 }
+cfg.draft.rune = cfg.draft.rune or { cd = 0, id = 0 }
+if cfg.draft.rune.id == nil then cfg.draft.rune.id = 0 end
 
--- migração simples (se você tinha cfg.spells antes)
 if cfg.spells and type(cfg.spells) == "table" and #cfg.actions == 0 then
   for _, sp in ipairs(cfg.spells) do
     table.insert(cfg.actions, {
@@ -911,9 +984,6 @@ if cfg.spells and type(cfg.spells) == "table" and #cfg.actions == 0 then
   cfg.spells = nil
 end
 
--- =========================================================
--- UI refs (assume que comboInterface/spellAddPanel/runeAddPanel já existem)
--- =========================================================
 local ui   = comboInterface
 local spUI = spellAddPanel
 local rnUI = runeAddPanel
@@ -925,16 +995,14 @@ local addRuneBtn  = ui.adicionarRuna
 local upBtn       = ui.moveUp
 local downBtn     = ui.moveDown
 
-local offHealing  = ui.offHealing
 local virarTarget = ui.virarTarget
 local manterDist  = ui.manterDist
 local checkStairs = ui.CheckStairs
 local ignoreParty = ui.IgnoreParty
-local stopOnPk    = ui.stopOnPk
+local checkAndares    = ui.checkAndares
 local sqmSafe     = ui.sqmSafe
 local idsSafePanel= ui.idsSafeAndares
 
--- spell panel widgets
 local sp_spell    = W(spUI, "magia")
 local sp_dist     = W(spUI, "distance")
 local sp_mana     = W(spUI, "mana")
@@ -949,8 +1017,40 @@ local sp_mbLbl    = W(spUI, "mobsLabel")
 local sp_cdLbl    = W(spUI, "cdLabel")
 local sp_calcBtn  = W(spUI, "calculeCooldown")
 
--- rune panel widgets
+local function getBotItemId(w)
+  if not w then return 0 end
+  if w.getItemId then
+    local id = tonumber(w:getItemId()) or 0
+    return id
+  end
+
+  if w.getItem and w:getItem() and w:getItem().getId then
+    return tonumber(w:getItem():getId()) or 0
+  end
+  return 0
+end
+
+local function setBotItemId(w, id)
+  if not w then return end
+  id = tonumber(id) or 0
+  if w.setItemId then
+    w:setItemId(id)
+    return
+  end
+  if w.setItem and Item and Item.create then
+    if id > 0 then
+      w:setItem(Item.create(id, 1))
+    end
+  end
+end
+
 local rn_id       = W(rnUI, "runa")
+if rn_id and rn_id.onItemChange then
+  rn_id.onItemChange = function(widget)
+    cfg.draft.rune.id = getBotItemId(widget)
+  end
+end
+
 local rn_dist     = W(rnUI, "distance")
 local rn_mobs     = W(rnUI, "mobs")
 local rn_cd       = W(rnUI, "cooldown")
@@ -962,9 +1062,6 @@ local rn_mbLbl    = W(rnUI, "mobsLabel")
 local rn_cdLbl    = W(rnUI, "cdLabel")
 local rn_calcBtn  = W(rnUI, "calculeCooldown")
 
--- =========================================================
--- Safe IDs Andares (BotContainer) -> cfg.main.safeIdsAndares
--- =========================================================
 local idsSafeContainer = UI.Container(function(_, items)
   if type(items) ~= "table" then items = {} end
   cfg.main.safeIdsAndares = items
@@ -975,9 +1072,6 @@ idsSafeContainer:fill('parent')
 idsSafeContainer:setOpacity(0.60)
 idsSafeContainer:setItems(cfg.main.safeIdsAndares)
 
--- =========================================================
--- Row template
--- =========================================================
 local rowTemplate = [[
 UIWidget
   id: root
@@ -1065,9 +1159,6 @@ UIWidget
     image-source: /images/ui/button_rounded
 ]]
 
--- =========================================================
--- Labels update
--- =========================================================
 local function updateSpellPanelLabels()
   if sp_dLbl and sp_dist then sp_dLbl:setText("DISTANCE: " .. (sp_dist:getValue() or 0)) end
   if sp_mLbl and sp_mana then sp_mLbl:setText("MANA: " .. (sp_mana:getValue() or 0)) end
@@ -1087,9 +1178,6 @@ local function updateRunePanelLabels()
   end
 end
 
--- =========================================================
--- Reset forms
--- =========================================================
 local function resetSpellForm()
   if sp_spell then sp_spell:setText("") end
   if sp_dist then sp_dist:setValue(1) end
@@ -1102,18 +1190,19 @@ local function resetSpellForm()
 end
 
 local function resetRuneForm()
-  if rn_id then rn_id:setText("") end
+  cfg.draft.rune.id = 0
+
+  if rn_id then setBotItemId(rn_id, 0) end
+
   if rn_dist then rn_dist:setValue(1) end
   if rn_mobs then rn_mobs:setValue(0) end
   if rn_cd then rn_cd:setValue(1000) end
   if rn_safe then rn_safe:setChecked(false) end
+
   cfg.draft.rune.cd = 0
   updateRunePanelLabels()
 end
 
--- =========================================================
--- ScrollBar binds (SALVA SEMPRE no draft)
--- =========================================================
 if sp_dist then sp_dist.onValueChange = function() updateSpellPanelLabels() end end
 if sp_mana then sp_mana.onValueChange = function() updateSpellPanelLabels() end end
 if sp_mobs then sp_mobs.onValueChange = function() updateSpellPanelLabels() end end
@@ -1141,9 +1230,6 @@ if rn_cd then
   end
 end
 
--- =========================================================
--- Selection helpers
--- =========================================================
 local function getSelectedIndex()
   local focused = spellList and spellList:getFocusedChild() or nil
   if not focused then return nil end
@@ -1152,9 +1238,6 @@ end
 
 local editingIndex = nil -- index dentro de cfg.actions
 
--- =========================================================
--- Refresh list
--- =========================================================
 local function refreshList()
   if not spellList then return end
   clearChildren(spellList)
@@ -1167,21 +1250,18 @@ local function refreshList()
     local row = setupUI(rowTemplate, spellList)
     row.entryIndex = i
 
-    -- Enable/Disable
     row.enabled:setChecked(entry.enabled and true or false)
     row.enabled.onClick = function()
       entry.enabled = not entry.enabled
       row.enabled:setChecked(entry.enabled)
     end
 
-    -- Remove
     row.remove.onClick = function()
       table.remove(cfg.actions, row.entryIndex)
       editingIndex = nil
       refreshList()
     end
 
-    -- Conteúdo principal
     if entry.type == "rune" then
       row.spellName:setText("   ")
       row.spellName:setVisible(true)
@@ -1194,13 +1274,11 @@ local function refreshList()
       row.spellName:setText(tostring(entry.spell or ""))
     end
 
-    -- Dist/Mobs
     local dist = tonumber(entry.dist or 0) or 0
     local mobs = tonumber(entry.mobs or 0) or 0
     row.distText:setText(string.format("[%d Sqm Range | ", dist))
     row.mobsText:setText(string.format("+%d Creature]", mobs))
 
-    -- SAFE com cor
     local safeChar  = entry.safe and "SAFE" or "UNSAFE"
     local safeColor = entry.safe and "#00FF00" or "#FF4040"
     if row.safeText.setColoredText then
@@ -1210,7 +1288,6 @@ local function refreshList()
       row.safeText:setColor(safeColor)
     end
 
-    -- Tooltip
     local tip = ""
     if entry.type == "spell" then
       tip = string.format(
@@ -1244,7 +1321,7 @@ local function refreshList()
       editingIndex = idx
 
       if e.type == "rune" then
-        if rn_id then rn_id:setText(tostring(e.runeId or "")) end
+        if rn_id then setBotItemId(rn_id, tonumber(e.runeId) or 0) end
         if rn_dist then rn_dist:setValue(clamp(e.dist or 1, 0, 12)) end
         if rn_mobs then rn_mobs:setValue(clamp(e.mobs or 0, 0, 10)) end
 
@@ -1277,9 +1354,6 @@ local function refreshList()
   end
 end
 
--- =========================================================
--- Move up/down
--- =========================================================
 upBtn.onClick = function()
   local idx = getSelectedIndex()
   if not idx or idx < 2 then return end
@@ -1298,33 +1372,42 @@ downBtn.onClick = function()
   if newFocus then spellList:focusChild(newFocus) end
 end
 
--- =========================================================
--- Main toggles -> cfg
--- =========================================================
-if offHealing then
-  offHealing:setOn(cfg.main.enabled and true or false)
-  offHealing.onClick = function(w) cfg.main.enabled = w:isOn() end
+local function _bsGet(widget)
+  if not widget then return false end
+  if widget.isOn then return widget:isOn() end
+  if widget.isChecked then return widget:isChecked() end
+  return false
 end
-if virarTarget then
-  virarTarget:setChecked(cfg.main.virarTarget and true or false)
-  virarTarget.onCheckChange = function(w) cfg.main.virarTarget = w:isChecked() end
+
+local function _bsSet(widget, state)
+  state = state and true or false
+  if not widget then return end
+  if widget.setOn then widget:setOn(state); return end
+  if widget.setChecked then widget:setChecked(state); return end
 end
-if manterDist then
-  manterDist:setChecked(cfg.main.manterDist and true or false)
-  manterDist.onCheckChange = function(w) cfg.main.manterDist = w:isChecked() end
+
+local function bindBotSwitch(widget, cfgKey, defaultValue)
+  if not widget or not cfg or not cfg.main then return end
+
+  if cfg.main[cfgKey] == nil then
+    cfg.main[cfgKey] = defaultValue and true or false
+  end
+
+  _bsSet(widget, cfg.main[cfgKey])
+
+  widget.onClick = function(w)
+    local newState = not _bsGet(w)
+    _bsSet(w, newState)
+    cfg.main[cfgKey] = newState
+  end
 end
-if checkStairs then
-  checkStairs:setChecked(cfg.main.checkStairs and true or false)
-  checkStairs.onCheckChange = function(w) cfg.main.checkStairs = w:isChecked() end
-end
-if ignoreParty then
-  ignoreParty:setChecked(cfg.main.ignoreParty and true or false)
-  ignoreParty.onCheckChange = function(w) cfg.main.ignoreParty = w:isChecked() end
-end
-if stopOnPk then
-  stopOnPk:setChecked(cfg.main.stopOnPk and true or false)
-  stopOnPk.onCheckChange = function(w) cfg.main.stopOnPk = w:isChecked() end
-end
+
+bindBotSwitch(virarTarget, "virarTarget", false)
+bindBotSwitch(manterDist,  "manterDist",  false)
+bindBotSwitch(checkStairs, "checkStairs", false)
+bindBotSwitch(ignoreParty, "ignoreParty", false)
+bindBotSwitch(checkAndares,"checkAndares",false)
+
 if sqmSafe then
   sqmSafe:setValue(clamp(cfg.main.sqmSafe, 1, 10))
   sqmSafe.onValueChange = function(w, v)
@@ -1333,9 +1416,6 @@ if sqmSafe then
   end
 end
 
--- =========================================================
--- Open add panels
--- =========================================================
 addSpellBtn.onClick = function()
   editingIndex = nil
   resetSpellForm()
@@ -1353,9 +1433,6 @@ end
 sp_cancel.onClick = function() spUI:hide() comboInterface:show() end
 rn_cancel.onClick = function() rnUI:hide() comboInterface:show() end
 
--- =========================================================
--- Add spell
--- =========================================================
 sp_add.onClick = function()
   local spell = trim(sp_spell and sp_spell:getText() or "")
   if isEmpty(spell) then return warn("[Combo] Preencha o campo SPELL.") end
@@ -1385,12 +1462,9 @@ sp_add.onClick = function()
   comboInterface:show()
 end
 
--- =========================================================
--- Add rune
--- =========================================================
 rn_add.onClick = function()
-  local runeId = tonumber(trim(rn_id and rn_id:getText() or ""))
-  if not runeId or runeId <= 0 then return warn("[Combo] ID da runa invalido.") end
+  local runeId = getBotItemId(rn_id)
+  if not runeId or runeId <= 0 then return warn("[Combo] Selecione a runa no BotItem.") end
 
   local entry = {
     type    = "rune",
@@ -1412,14 +1486,12 @@ rn_add.onClick = function()
 
   refreshList()
   editingIndex = nil
+  cfg.draft.rune.id = 0
   resetRuneForm()
   rnUI:hide()
   comboInterface:show()
 end
 
--- =========================================================
--- INIT UI state
--- =========================================================
 spUI:hide()
 rnUI:hide()
 resetSpellForm()
@@ -1439,7 +1511,6 @@ end
 
 resetRuntimeCooldowns()
 
--- quando troca de char / reconecta
 if g_game and connect then
   connect(g_game, {
     onGameStart = function()
@@ -1448,114 +1519,6 @@ if g_game and connect then
   })
 end
 
--- =========================
--- ANTI RED
--- =========================
-local function showMessage(msg)
-    if modules and modules.game_textmessage and modules.game_textmessage.displayGameMessage then
-      modules.game_textmessage.displayGameMessage(msg)
-    end
-  end
-
-cfg.main.disabledByFrag = cfg.main.disabledByFrag or {} -- lista de indices desligados
-local skullDropAt = 0
-
-local function iAmFrag()
-  local p = g_game.getLocalPlayer()
-  if not p then return false end
-  local skull = p.getSkull and p:getSkull() or 0
-  return skull >= 3
-end
-
-local function iAmDead()
-  local p = g_game.getLocalPlayer()
-  if not p then return false end
-  if p.getHealthPercent then
-    return (p:getHealthPercent() or 100) <= 0
-  end
-  return false
-end
-
-local function disableUnsafeActions()
-  local did = false
-  -- evita duplicar indices
-  local mark = {}
-  for _, idx in ipairs(cfg.main.disabledByFrag) do mark[idx] = true end
-
-  for i, a in ipairs(cfg.actions or {}) do
-    if a and a.enabled ~= false and a.safe == false then
-      a.enabled = false
-      if not mark[i] then
-        table.insert(cfg.main.disabledByFrag, i)
-        mark[i] = true
-      end
-      did = true
-    end
-  end
-
-  if did and type(refreshList) == "function" then refreshList() end
-  if did then showMessage("[LNS-SCRIPT] PK/FRAG Detectado - SPELLS UNSAFE DESLIGADAS!") end
-end
-
-local function restoreUnsafeActions()
-  if type(cfg.main.disabledByFrag) ~= "table" or #cfg.main.disabledByFrag == 0 then return end
-
-  for _, idx in ipairs(cfg.main.disabledByFrag) do
-    local a = cfg.actions and cfg.actions[idx]
-    if a then a.enabled = true end
-  end
-
-  cfg.main.disabledByFrag = {}
-  skullDropAt = 0
-
-  if type(refreshList) == "function" then refreshList() end
-  showMessage("[LNS-SCRIPT] PK Expirado - SPELLS UNSAFE RELIGADAS.")
-end
-
-macro(200, function()
-  if not storage[switchCombo].enabled then return end
-  if not ui or not ui.stopOnPk or not ui.stopOnPk.isChecked then return end
-
-  if not ui.stopOnPk:isChecked() then
-    -- se desligou o sistema, restaura tudo
-    restoreUnsafeActions()
-    return
-  end
-
-  local frag = iAmFrag()
-
-  -- se pegou skull e ainda não desligou nada, desliga
-  if frag and (#cfg.main.disabledByFrag == 0) then
-    disableUnsafeActions()
-    skullDropAt = 0
-    return
-  end
-
-  -- se já desligou, espera ficar safe pra restaurar (ou morte)
-  if #cfg.main.disabledByFrag > 0 then
-    if iAmDead() then
-      restoreUnsafeActions()
-      return
-    end
-
-    if frag then
-      skullDropAt = 0
-    else
-      if skullDropAt == 0 then skullDropAt = os.time() end
-      -- pode restaurar imediatamente ao perder skull
-      if os.time() >= skullDropAt then
-        restoreUnsafeActions()
-      end
-    end
-  end
-end)
-
--- garante que ao carregar o script ele não fique preso desativado
-restoreUnsafeActions()
-
--- -------------------------
--- SPELL CD (por onTalk)
--- -------------------------
 local cdSpell = { active=false, spell="", lastTime=0 }
 
 local function stopSpellCalc()
@@ -1611,13 +1574,6 @@ if sp_calcBtn then
   end
 end
 
--- -------------------------
--- RUNE CD (por MISSILE) + aprende missileId automaticamente
--- -------------------------
--- =========================================================
--- RUNE COOLDOWN - MISSILE ONLY (SEM FALLBACK)
--- =========================================================
-
 cfg.draft = cfg.draft or {}
 cfg.draft.rune = cfg.draft.rune or { cd = 0 }
 
@@ -1645,10 +1601,8 @@ local function applyRuneCd(ms)
   if ms < 0 then ms = 0 end
   if ms > 60000 then ms = 60000 end
 
-  -- salva no storage
   cfg.draft.rune.cd = ms
 
-  -- aplica no painel
   local rn_cd = runeAddPanel and W(runeAddPanel, "cooldown")
   if rn_cd and rn_cd.setValue then
     rn_cd:setValue(ms)
@@ -1662,9 +1616,6 @@ local function applyRuneCd(ms)
   stopRuneCd()
 end
 
--- =========================================================
--- TRY USE (APENAS useWith) + FORCADO
--- =========================================================
 local function tryUseRune(runeId)
   local target = g_game.getAttackingCreature()
   if not target then target = g_game.getLocalPlayer() end
@@ -1683,16 +1634,10 @@ local function tryUseRune(runeId)
   return ok
 end
 
--- =========================================================
--- [INSERIDO] AUTO USAR RUNA 2x (FORCANDO TENTATIVAS)
--- - tenta soltar o 1o missile
--- - quando pegar o 1o missile, começa a forcar o 2o missile
--- - para sozinho quando applyRuneCd() rodar
--- =========================================================
 local runeAuto = {
   active = false,
   runeId = 0,
-  stage = 0,       -- 1=forcar 1o missile, 2=forcar 2o missile
+  stage = 0,
   nextAt = 0,
   startedAt = 0
 }
@@ -1709,12 +1654,10 @@ macro(60, function()
   if not runeAuto.active then return end
   if runeAuto.runeId <= 0 then runeAuto.active = false; return end
 
-  -- se o calc acabou, para o auto junto
   if not runeCd.active then runeAuto.active = false; return end
 
   local t = nowMs()
 
-  -- timeout pra nao ficar infinito (ex: sem missile no servidor)
   if t - runeAuto.startedAt > 20000 then
     warn("[CD-RUNE] Timeout: nao consegui medir (sem 2 missiles).")
     runeAuto.active = false
@@ -1723,25 +1666,19 @@ macro(60, function()
 
   if runeAuto.nextAt ~= 0 and t < runeAuto.nextAt then return end
 
-  -- intervalo de tentativa (nao spammar demais)
   runeAuto.nextAt = t + 250
 
-  -- stage 1: forca sair o 1o missile (ate runeCd.missileId ser aprendido)
   if runeAuto.stage == 1 then
     tryUseRune(runeAuto.runeId)
     return
   end
 
-  -- stage 2: forca sair o 2o missile (ate applyRuneCd disparar)
   if runeAuto.stage == 2 then
     tryUseRune(runeAuto.runeId)
     return
   end
 end)
 
--- =========================================================
--- MISSILE HANDLER
--- =========================================================
 local function handleRuneMissile(missile)
   if not runeCd.active or not missile then return end
 
@@ -1765,12 +1702,10 @@ local function handleRuneMissile(missile)
 
   local t = nowMs()
 
-  -- primeiro missile → aprende missileId
   if not runeCd.missileId then
     runeCd.missileId = mid
     runeCd.lastTime = t
 
-    -- [INSERIDO] assim que pegar o 1o missile, começa a forcar o 2o
     if runeAuto.active then
       runeAuto.stage = 2
       runeAuto.nextAt = 0
@@ -1781,16 +1716,11 @@ local function handleRuneMissile(missile)
   -- ignora missiles diferentes
   if mid ~= runeCd.missileId then return end
 
-  -- segundo missile → calcula CD
   if runeCd.lastTime > 0 then
     applyRuneCd(t - runeCd.lastTime)
-    -- applyRuneCd -> stopRuneCd() -> runner para sozinho
   end
 end
 
--- =========================================================
--- HOOKS DE MISSILE (compatibilidade total)
--- =========================================================
 if type(onMissile) == "function" then
   pcall(function()
     onMissile(handleRuneMissile)
@@ -1813,15 +1743,15 @@ if g_map and connect then
   end)
 end
 
--- =========================================================
--- BOTÃO "!" DO PAINEL
--- =========================================================
 do
   local btn = runeAddPanel and W(runeAddPanel, "calculeCooldown")
   if btn then
     btn.onClick = function()
       local rn_id = runeAddPanel and W(runeAddPanel, "runa")
-      local runeId = tonumber(trim(rn_id and rn_id:getText() or ""))
+      local runeId = getBotItemId(rn_id)
+      if not runeId or runeId <= 0 then
+        return warn("[CD-RUNE] Selecione a runa no BotItem.")
+      end
 
       if not runeId or runeId <= 0 then
         return warn("[CD-RUNE] ID da runa inválido.")
@@ -1839,9 +1769,6 @@ do
   end
 end
 
--- =========================================================
--- LOAD DO COOLDOWN AO ABRIR O PAINEL
--- =========================================================
 do
   local rn_cd = runeAddPanel and W(runeAddPanel, "cooldown")
   if rn_cd and rn_cd.setValue then
@@ -1852,12 +1779,6 @@ do
   end
 end
 
-
-
-
--- =========================================================
--- CHECK STAIRS + TEXTO "UNSAFE" SIMPLES
--- =========================================================
 ANDAR_NAO_SAFE = false
 
 local function buildIdLookup(ids)
@@ -1898,8 +1819,8 @@ local function checkStairsNearby(dist, idLookup)
 end
 
 macro(200, function()
-  if not ui or not ui.CheckStairs then ANDAR_NAO_SAFE = false return end
-  if not ui.CheckStairs:isChecked() then ANDAR_NAO_SAFE = false return end
+  if not (cfg and cfg.main) then ANDAR_NAO_SAFE = false return end
+  if not cfg.main.checkStairs then ANDAR_NAO_SAFE = false return end
 
   local dist = clamp((cfg and cfg.main and cfg.main.sqmSafe) or 8, 1, 10)
   local ids = (cfg and cfg.main and cfg.main.safeIdsAndares) or {}
@@ -1908,19 +1829,23 @@ macro(200, function()
   ANDAR_NAO_SAFE = checkStairsNearby(dist, lookup)
 end)
 
-macro(300, function()
+macro(200, function()
   local player = g_game.getLocalPlayer()
   if not player then return end
-  if ANDAR_NAO_SAFE then
+
+  local unsafe = false
+
+  if ANDAR_NAO_SAFE or PLAYERSINSCREEN then
+    unsafe = true
+  end
+
+  if unsafe then
     player:setText("UNSAFE")
   else
     player:setText("")
   end
 end)
 
--- =========================================================
--- KEEP DISTANCE (só com checkbox manterDist)
--- =========================================================
 local lastMove = 0
 local moveDelay = 25
 local lastDir = nil
@@ -1952,8 +1877,8 @@ local function isWalkableFree(pos)
 end
 
 macro(200, function()
-  if not ui or not ui.manterDist or not ui.manterDist.isChecked then return end
-  if not (storage[switchCombo].enabled and ui.manterDist:isChecked()) then return end
+  if not (cfg and cfg.main) then return end
+  if not (storage[switchCombo].enabled and cfg.main.manterDist) then return end
 
   local target = g_game.getAttackingCreature()
   if not target then return end
@@ -2013,9 +1938,6 @@ macro(200, function()
   if nowt > stableUntil then lastDir = nil end
 end)
 
--- =========================================================
--- VIRAR PARA O TARGET (fast 4-dir) - checkbox virarTarget
--- =========================================================
 local lastTurn = 0
 local turnDelay = 20
 
@@ -2031,7 +1953,8 @@ local function getDir4(fromPos, toPos)
 end
 
 macro(30, function()
-  if not (storage[switchCombo].enabled and comboInterface.virarTarget:isChecked()) then return end
+  if not (cfg and cfg.main) then return end
+  if not (storage[switchCombo].enabled and cfg.main.virarTarget) then return end
 
   local player = g_game.getLocalPlayer()
   if not player then return end
@@ -2061,15 +1984,6 @@ macro(30, function()
   lastTurn = nowt
 end)
 
--- ===========================================================
-
-
--- =========================================================
--- MOTOR DE COMBATE (LNS ENGINE) - LÓGICA INVERTIDA
--- Checkbox MARCADO = Magia Segura (Usa sempre)
--- Checkbox DESMARCADO = Magia Perigosa (Bloqueia se houver perigo)
--- =========================================================
-
 local runeToMissile = {
     [3155] = 32,  -- SD
     [3175] = 20,
@@ -2078,9 +1992,6 @@ local runeToMissile = {
     [3202] = 25
 }
 
--- =========================================================
--- 1. DETECTOR DE MAGIAS (PRECISÃO EXATA)
--- =========================================================
 onTalk(function(name, level, mode, text, channelId, pos)
     if name ~= g_game.getLocalPlayer():getName() then return end
     text = text:lower()
@@ -2096,9 +2007,6 @@ onTalk(function(name, level, mode, text, channelId, pos)
     end
 end)
 
--- =========================================================
--- 2. DETECTOR DE RUNAS (PRECISÃO EXATA)
--- =========================================================
 onMissle(function(missle)
     local player = g_game.getLocalPlayer()
     if not player then return end
@@ -2127,12 +2035,6 @@ onMissle(function(missle)
     end
 end)
 
--- =========================================================
--- CHECK PLAYERS (range = sqmSafe)
--- - detecta player no mesmo andar
--- - ignora PT e ignora guild (emblem==1)
--- - ATIVA quando ui.IgnoreParty (Checar Players) estiver marcado
--- =========================================================
 PLAYERSINSCREEN = false
 
 local function clampValue(v, mn, mx)
@@ -2155,16 +2057,39 @@ local function isGuildMemberSafe(spec)
   return (spec.getEmblem and spec:getEmblem() == 1) or false
 end
 
-macro(200, function()
-  -- seu toggle real é ignoreParty (checkbox id IgnoreParty = "Checar Players")
-  local enabledCheck = false
-  if ui and ui.IgnoreParty and ui.IgnoreParty.isChecked then
-    enabledCheck = ui.IgnoreParty:isChecked()
-  elseif cfg and cfg.main then
-    enabledCheck = cfg.main.ignoreParty == true
+local function isEnemyPlayer(spec)
+  if not spec or not spec.isPlayer or not spec:isPlayer() then return false end
+  if spec.isLocalPlayer and spec:isLocalPlayer() then return false end
+  if isPartyMemberSafe(spec) then return false end
+  if isGuildMemberSafe(spec) then return false end
+  return true
+end
+
+local function getSpecs(pos, multifloor)
+  if g_map and g_map.getSpectators then
+    local ok, res = pcall(function()
+      return g_map.getSpectators(pos, multifloor) -- (pos, multifloor)
+    end)
+    if ok and type(res) == "table" then return res end
   end
 
-  if not enabledCheck then
+  if type(getSpectators) == "function" then
+    local ok, res = pcall(function()
+      return getSpectators(multifloor) -- (multifloor)
+    end)
+    if ok and type(res) == "table" then return res end
+  end
+
+  return {}
+end
+
+macro(200, function()
+  if not (cfg and cfg.main) then
+    PLAYERSINSCREEN = false
+    return
+  end
+
+  if not cfg.main.ignoreParty then
     PLAYERSINSCREEN = false
     return
   end
@@ -2174,131 +2099,129 @@ macro(200, function()
   local myPos = me:getPosition()
   if not myPos then return end
 
-  local range = clampValue((cfg and cfg.main and cfg.main.sqmSafe) or 8, 1, 8)
+  local range = clampValue(cfg.main.sqmSafe or 8, 1, 8)
 
-  local enemyFound = false
-  local specs = {}
-
-  if g_map and g_map.getSpectators then
-    specs = g_map.getSpectators(myPos, false) or {}
-  else
-    -- fallback bem simples
-    specs = getSpectators(false) or {}
-  end
-
-  for _, spec in ipairs(specs) do
-    if spec and spec:isPlayer() and not spec:isLocalPlayer() then
+  local specsSame = getSpecs(myPos, false)
+  for _, spec in ipairs(specsSame) do
+    if isEnemyPlayer(spec) then
       local sp = spec:getPosition()
       if sp and sp.z == myPos.z then
         local dist = getDistanceBetween(myPos, sp)
         if dist <= range then
-          if not isPartyMemberSafe(spec) and not isGuildMemberSafe(spec) then
-            enemyFound = true
-            break
+          PLAYERSINSCREEN = true
+          return
+        end
+      end
+    end
+  end
+
+  local nearStairs = (cfg.main.checkStairs == true) and (ANDAR_NAO_SAFE == true)
+  if not nearStairs then
+    PLAYERSINSCREEN = false
+    return
+  end
+
+  local specsMulti = getSpecs(myPos, true)
+  for _, spec in ipairs(specsMulti) do
+    if isEnemyPlayer(spec) then
+      local sp = spec:getPosition()
+      if sp then
+        -- somente 1 andar acima/abaixo (igual a lógica do script referência)
+        if (sp.z == myPos.z - 1) or (sp.z == myPos.z + 1) then
+          local dist = getDistanceBetween(myPos, sp)
+          if dist <= range then
+            PLAYERSINSCREEN = true
+            return
           end
         end
       end
     end
   end
 
-  PLAYERSINSCREEN = enemyFound
+  PLAYERSINSCREEN = false
 end)
 
--- =========================================================
--- 3. MACRO DE COMBO REFEITO (MOTOR)
--- =========================================================
-local SPAM_DELAY = 50 -- Tempo de espera "provisório" até o servidor responder
+local SPAM_DELAY = 50
 
 macro(100, function()
-    if not storage[switchCombo].enabled then return end
-    if not cfg.main.enabled then return end 
+  if not storage[switchCombo].enabled then return end
 
-    local player = g_game.getLocalPlayer()
-    local target = g_game.getAttackingCreature()
-    
-    if not player or not target then return end
-    if player:isNpc() then return end
+  local player = g_game.getLocalPlayer()
+  local target = g_game.getAttackingCreature()
+  if not player or not target then return end
+  if player:isNpc() then return end
 
-    -- Segurança PK (opcional - Só para se stopOnPk estiver ATIVADO e alvo for PLAYER)
-    if cfg.main.stopOnPk and target:isPlayer() then return end
+  local pPos = player:getPosition()
+  local tPos = target:getPosition()
+  if not pPos or not tPos or pPos.z ~= tPos.z then return end
 
-    local pPos = player:getPosition()
-    local tPos = target:getPosition()
-    
-    -- Se não tiver posição válida ou andar diferente, aborta
-    if not pPos or not tPos or pPos.z ~= tPos.z then return end
+  local dist = math.max(math.abs(pPos.x - tPos.x), math.abs(pPos.y - tPos.y))
+  local targetIsPlayer = (target.isPlayer and target:isPlayer()) or false
 
-    local dist = math.max(math.abs(pPos.x - tPos.x), math.abs(pPos.y - tPos.y))
+  for _, action in ipairs(cfg.actions) do
+    if action.enabled then
 
-    -- LOOP PELA LISTA DE AÇÕES
-    for i, action in ipairs(cfg.actions) do
-        if action.enabled then
-            
-            -- 1. Checagem de Cooldown (Baseada no onTalk/onMissle)
-            -- Se 'nextCast' não existir, assume que está pronto (0)
-            local isReady = now >= (action.nextCast or 0)
+      local nextCast = tonumber(action.nextCast) or 0
+      local isReady = (now >= nextCast)
 
-            -- 2. Checagens de Distância e Mana
-            local distOk = dist <= (action.dist or 8)
-            
-            local manaOk = true
-            if action.type == "spell" then
-                local needMana = tonumber(action.mana) or 0
-                if mana() < needMana then manaOk = false end
+      local aDist = tonumber(action.dist) or 8
+      local distOk = (dist <= aDist)
+
+      local manaOk = true
+      if action.type == "spell" then
+        local needMana = tonumber(action.mana) or 0
+        if mana() < needMana then manaOk = false end
+      end
+
+      -- mobs: se target é player, NÃO trava por mobs
+      local mobsOk = true
+      local needMobs = tonumber(action.mobs) or 0
+      if not targetIsPlayer and needMobs > 0 then
+        local count = 0
+        local specs = g_map.getSpectators(pPos, false) or {}
+        for _, s in ipairs(specs) do
+          if s and s.isMonster and s:isMonster() then
+            local sPos = s:getPosition()
+            if sPos and sPos.z == pPos.z then
+              local sd = math.max(math.abs(pPos.x - sPos.x), math.abs(pPos.y - sPos.y))
+              if sd <= 7 then count = count + 1 end
             end
-
-            -- 3. Checagem de Mobs (Ao Redor)
-            local mobsOk = true
-            if (action.mobs or 0) > 0 then
-                local count = 0
-                local specs = g_map.getSpectators(pPos, false)
-                for _, s in ipairs(specs) do
-                    if s:isMonster() then
-                        local sPos = s:getPosition()
-                        local sd = math.max(math.abs(pPos.x - sPos.x), math.abs(pPos.y - sPos.y))
-                        if sd <= 7 then count = count + 1 end
-                    end
-                end
-                if count < action.mobs then mobsOk = false end
-            end
-
-            -- 4. LÓGICA SAFE (Safe Checkbox)
-            -- Checkbox MARCADO = SAFE (Pode usar sempre)
-            -- Checkbox DESMARCADO = UNSAFE (Verifica perigos)
-            local safeOk = true
-
-            if not action.safe then
-              if cfg.main.checkStairs and ANDAR_NAO_SAFE then
-                safeOk = false
-              end
-
-              -- seu toggle real de "Checar Players" = cfg.main.ignoreParty (checkbox id IgnoreParty)
-              if cfg.main.ignoreParty and PLAYERSINSCREEN then
-                safeOk = false
-              end
-            end
-
-            -- ====================================================
-            -- EXECUÇÃO
-            -- ====================================================
-            if isReady and distOk and manaOk and mobsOk and safeOk then
-                
-                if action.type == "spell" then
-                    say(action.spell)
-                    delay(1000)
-                    action.nextCast = now + SPAM_DELAY 
-                    return 
-
-                elseif action.type == "rune" then
-                    local rid = tonumber(action.runeId)
-                    if rid and rid > 0 then
-                      if (not userRune or userRune <= now) then
-                        useWith(rid, target) 
-                      end
-                      return
-                    end
-                end
-            end
+          end
         end
+        if count < needMobs then mobsOk = false end
+      end
+
+      -- SAFE RULE:
+      -- UNSAFE só bloqueia por players na tela se o alvo NÃO é player
+      local safeOk = true
+      if not action.safe then
+        if cfg.main.checkStairs and ANDAR_NAO_SAFE then
+          safeOk = false
+        end
+
+        if (not targetIsPlayer) and cfg.main.ignoreParty and PLAYERSINSCREEN then
+          safeOk = false
+        end
+      end
+
+      if isReady and distOk and manaOk and mobsOk and safeOk then
+        if action.type == "spell" then
+          if action.spell and action.spell ~= "" then
+            say(action.spell)
+            action.nextCast = now + SPAM_DELAY
+            return
+          end
+
+        elseif action.type == "rune" then
+          local rid = tonumber(action.runeId) or 0
+          if rid > 0 then
+            if (not userRune or userRune <= now) then
+              useWith(rid, target)
+            end
+            return
+          end
+        end
+      end
     end
+  end
 end)
