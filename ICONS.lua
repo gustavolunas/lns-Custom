@@ -268,9 +268,9 @@ local function addIcone(id, options, onPosChanged)
   local cfg = db.icons[id]
 
   if type(cfg.x) ~= "number" or type(cfg.y) ~= "number" then
-    cfg.x = 0.01 + math.floor(iconsWithoutPosition / 5) / 10
-    cfg.y = 0.05 + (iconsWithoutPosition % 5) / 5
-    iconsWithoutPosition = iconsWithoutPosition + 1
+    -- posição inicial padronizada: X=1 / Y=1 (0.01 em relativo)
+    cfg.x = 0.01
+    cfg.y = 0.01
   end
 
   local w = g_ui.createWidget("BotIcon", panel)
@@ -938,7 +938,6 @@ local applyIconsVisibility = function() end
 local iconButton = setupUI([[
 Panel
   height: 17
-
   BotSwitch
     id: title
     anchors.top: parent.top
@@ -1084,8 +1083,10 @@ local ICON_LIST = {
   { id="lnsConditions",       label="CONDITIONS",        iconText="CONDIT." },
   { id="lnsSwapRingAMulet",   label="SWAP RING/AMULET",  iconText="RING/AMULET" },
   { id="lnsFollow",           label="FOLLOW",            iconText="FOLLOW" },
+  { id="lnsAutoSio",          label="AUTO SIO",          iconText="AUTOSIO" },
   { id="lnsSwapEquips",       label="SWAP EQUIPS",       iconText="SWAP EQUIPS" },
   { id="lnsPushmax",          label="PUSHMAX",           iconText="PUSHMAX" },
+  { id="lnsMwSystem",         label="MWSYSTEM",          iconText="MW SYSTEM" },
 
   { id="lnsCaveBot",          label="CAVEBOT",           iconText="CAVEBOT" },
   { id="lnsTargetBot",        label="TARGETBOT",         iconText="TARGET" },
@@ -1139,7 +1140,12 @@ end
 
 for _, it in ipairs(ICON_LIST) do
   it.key = "show_" .. it.id
-  if db.iconConfig[it.key] == nil then
+
+  -- normaliza para boolean (evita 'true'/'false' string ou 0/1 virarem truthy e mostrarem tudo)
+  local v = db.iconConfig[it.key]
+  if v == true or v == 1 or v == "1" or v == "true" then
+    db.iconConfig[it.key] = true
+  else
     db.iconConfig[it.key] = false
   end
 end
@@ -1157,7 +1163,7 @@ applyIconsVisibility = function()
   end
 
   for _, it in ipairs(ICON_LIST) do
-    if db.iconConfig[it.key] then
+    if db.iconConfig[it.key] == true then
       safeShow(icons[it.id])
     else
       safeHide(icons[it.id])
@@ -1310,7 +1316,17 @@ for _, it in ipairs(ICON_LIST) do
   }
 end
 
+-- garante estado limpo (evita aparecer tudo no relog antes de aplicar filtros)
+for _, it in ipairs(ICON_LIST) do
+  safeHide(icons[it.id])
+end
+
 applyIconsVisibility()
+
+-- reaplica visibilidade após login/reconexão (blindagem)
+macro(500, function()
+  applyIconsVisibility()
+end)
 
 local function matchesIcon(it, q)
   if q == "" then return true end
@@ -1841,6 +1857,8 @@ bindIconToConditionsCheck("lnsExetaLoot", "conditionsInterface", "exetaLoot")
 
 if healingButton and healingButton.title then bindIconToToggle("lnsHealing", healingButton.title, "healingButton") end
 if comboButton and comboButton.title then bindIconToToggle("lnsAttackBot", comboButton.title, "comboButton") end
+if sioButton and sioButton.title then bindIconToToggle("lnsAutoSio", sioButton.title, "sioButton") end
+if mwSystemButton and mwSystemButton.title then bindIconToToggle("lnsMwSystem", mwSystemButton.title, "mwSystemButton") end
 if conditionsButton and conditionsButton.title then bindIconToToggle("lnsConditions", conditionsButton.title, "conditionsButton") end
 if followButton and followButton.title then bindIconToToggle("lnsFollow", followButton.title, "followButton") end
 if buttonSwapEquips and buttonSwapEquips.title then bindIconToToggle("lnsSwapEquips", buttonSwapEquips.title, "buttonSwapEquips") end
