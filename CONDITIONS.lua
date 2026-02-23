@@ -608,14 +608,24 @@ macro(200, function()
 end)
 
 local lastExetaRes = 0
-local exetaResCooldown = 2000
+local exetaResCooldown = 2500
+
 macro(200, function()
-  if not storage["conditionsButton"] or not storage["conditionsButton"].enabled then return end
-  if not storage["conditionsInterface"] or not storage["conditionsInterface"].checks then return end
-  if not storage["conditionsInterface"].checks.exetaRes then return end
-  if isInPz() then return end
-  if not g_game.isAttacking() then return end
+  if not storage.conditionsButton or not storage.conditionsButton.enabled then return end
+  if not storage.conditionsInterface or not storage.conditionsInterface.checks or not storage.conditionsInterface.checks.exetaRes then return end
+  if isInPz() or not g_game.isAttacking() then return end
   if now - lastExetaRes < exetaResCooldown then return end
+
+  local me = g_game.getLocalPlayer()
+  local target = g_game.getAttackingCreature()
+  if not me or not target then return end
+
+  local p = me:getPosition()
+  local t = target:getPosition()
+  if not p or not t or p.z ~= t.z then return end
+
+  -- só se estiver exatamente a 1 SQM
+  if math.max(math.abs(p.x - t.x), math.abs(p.y - t.y)) ~= 1 then return end
 
   say("exeta res")
   lastExetaRes = now
@@ -718,4 +728,5 @@ macro(200, function()
 
   lastMobsAround = mobsAround
 end)
+
 
