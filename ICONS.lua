@@ -1103,6 +1103,7 @@ local ICON_LIST = {
   { id="lnsExetaRes",         label="AUTO EXETA RES",    iconText="EXETA RES" },
   { id="lnsAmpRes",           label="AUTO AMP RES",      iconText="AMP RES" },
   { id="lnsExetaLoot",        label="AUTO EXETA LOOT",   iconText="EXETA LOOT" },
+  { id="lnsCureStatus",       label="AUTO CURE STATUS",  iconText="CURE STATUS" },
 
   { id="lnsAutoAol",          label="AUTO AOL",          iconText="AOL" },
   { id="lnsAutoBless",        label="AUTO BLESS",        iconText="BLESS" },
@@ -1430,21 +1431,32 @@ local function bindIconToConditionsCheck(iconId, panelName, checkId)
   if not icons or not icons[iconId] then return end
   local icon = icons[iconId]
 
-  storage[panelName] = storage[panelName] or { checks = {}, combos = {}, texts = {} }
-  storage[panelName].checks = storage[panelName].checks or {}
+  storage[panelName] = storage[panelName] or {}
+
+  if storage[panelName].switches == nil and type(storage[panelName].checks) == "table" then
+    storage[panelName].switches = storage[panelName].checks
+    storage[panelName].checks = nil
+  end
+
+  storage[panelName].switches = storage[panelName].switches or {}
 
   local lock = false
 
   local function getState()
-    return storage[panelName].checks[checkId] == true
+    return storage[panelName].switches[checkId] == true
   end
 
   local function setState(state)
     state = (state == true)
-    storage[panelName].checks[checkId] = state
+    storage[panelName].switches[checkId] = state
 
-    if conditionsInterface and conditionsInterface[checkId] and conditionsInterface[checkId].setChecked then
-      conditionsInterface[checkId]:setChecked(state)
+    local w = (conditionsInterface and conditionsInterface[checkId]) or nil
+    if w then
+      if w.setOn and w.isOn then
+        if w:isOn() ~= state then w:setOn(state) end
+      elseif w.setChecked and w.isChecked then
+        if w:isChecked() ~= state then w:setChecked(state) end
+      end
     end
 
     if icon.status then
@@ -1854,6 +1866,7 @@ bindIconToConditionsCheck("lnsExetaRes", "conditionsInterface", "exetaRes")
 bindIconToConditionsCheck("lnsAmpRes", "conditionsInterface", "exetaAmpRes")
 bindIconToConditionsCheck("lnsUturaGran", "conditionsInterface", "spellUtura")
 bindIconToConditionsCheck("lnsExetaLoot", "conditionsInterface", "exetaLoot")
+bindIconToConditionsCheck("lnsCureStatus", "conditionsInterface", "cureStatus")
 
 if healingButton and healingButton.title then bindIconToToggle("lnsHealing", healingButton.title, "healingButton") end
 if comboButton and comboButton.title then bindIconToToggle("lnsAttackBot", comboButton.title, "comboButton") end
