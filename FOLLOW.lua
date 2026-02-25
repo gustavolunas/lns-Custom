@@ -9,11 +9,13 @@ if not storage[scriptsPanelName] then
             UESpell = "",
             ropeID = "3003"
         },
-        checkboxes = {
-            attackCheck = false,
-            followCheck = false,
-            useUEcheck = false
-        },
+        switches = {
+        attackCheck = false,
+        followCheck = false,
+        useUEcheck  = false,
+        souLider     = false,
+        abrirChatParty = false,
+      },
         -- IDs padrões
         useIDS = { 435 },
         ropeIDS = { 386 },
@@ -24,7 +26,19 @@ if not storage[scriptsPanelName] then
 end
 
 storage[scriptsPanelName].texts = storage[scriptsPanelName].texts or {}
-storage[scriptsPanelName].checkboxes = storage[scriptsPanelName].checkboxes or {}
+storage[scriptsPanelName].switches = storage[scriptsPanelName].switches or {}
+
+if storage[scriptsPanelName].checkboxes then
+  for k, v in pairs(storage[scriptsPanelName].checkboxes) do
+    if storage[scriptsPanelName].switches[k] == nil then
+      storage[scriptsPanelName].switches[k] = v and true or false
+    end
+  end
+  storage[scriptsPanelName].checkboxes = nil
+end
+
+if storage[scriptsPanelName].switches.souLider == nil then storage[scriptsPanelName].switches.souLider = false end
+if storage[scriptsPanelName].switches.abrirChatParty == nil then storage[scriptsPanelName].switches.abrirChatParty = false end
 
 local switchFollow = "followButton"
 
@@ -84,7 +98,7 @@ end
 local navPanel = setupUI([[  
 UIWindow
   id: navPanel
-  size: 390 335
+  size: 370 420
   !text: tr('')
   text-align: top-left
   font: verdana-11px-rounded
@@ -109,12 +123,13 @@ UIWindow
     size: 120 30
     text-align: center
     !text: tr('LNS Custom | Follow Control')
+    font: verdana-11px-rounded
     color: orange
     margin-left: 0
     margin-right: 0
-    background-color: black
-    $hover:
-      image-color: gray
+    background-color: #111111
+    opacity: 1.00
+    border: 1 #1f1f1f
   
   Panel
     id: iconPanel
@@ -139,260 +154,371 @@ UIWindow
       color: black
       opacity: 0.80
       
-  FlatPanel
+  Panel
+    id: infolist1
+    anchors.top: prev.bottom
+    anchors.left: parent.left
+    anchors.right: parent.right
+    width: 180
+    margin-top: 10
+    margin-left: 10
+    margin-right: 10
+    text: FOLLOW CONFIG
+    font: verdana-9px
+    background-color: black
+    border: 1 #1f1f1f
+    color: gray
+
+  Panel
     id: navConfig
     anchors.top: prev.bottom
     anchors.left: parent.left
-    image-color: #363636
-    height: 150
-    width: 180
-    margin-top: 15
+    height: 125
+    width: 170
+    margin-top: 2
     margin-left: 10
-    layout: verticalBox
-
-  Label
-    id: navLabel
-    anchors.verticalCenter: navConfig.top
-    anchors.left: navConfig.left
-    margin-left: 5
-    text: FOLLOW CONFIG:
-    text-auto-resize: true
-    font: verdana-9px-italic
+    background-color: #1b1b1b
+    opacity: 0.95
+    border: 1 #3b2a10
 
   Label
     id: labelAttack
-    anchors.top: navLabel.bottom
-    anchors.left: navLabel.left
-    margin-top: 10
-    text: Leader Attack:
-    font: verdana-11px-rounded
+    anchors.top: infolist1.bottom
+    anchors.left: infolist1.left
+    margin-left: 5
+    margin-top: 8
+    text: LEADER ATTACK:
+    font: verdana-9px
     text-auto-resize: true
-    color: gray
+    color: #d7c08a
 
-  BotTextEdit
+  TextEdit
     id: navAttack
     anchors.top: prev.bottom
     anchors.left: prev.left
     anchors.right: navConfig.right
     margin-right: 5
-    image-color: gray
-    
+    margin-top: 4
+    image-color: #2f2f2f
+    placeholder: INSERT LEADER NAME!
+    placeholder-font: verdana-9px
+    font: verdana-9px
+  
+  BotSwitch
+    id: attackCheck
+    anchors.top: labelAttack.top
+    anchors.left: labelAttack.right
+    image-source: /images/ui/button_rounded
+    font: verdana-9px
+    size: 50 15
+    margin-top: 0
+    margin-left: 28
+    $on:
+      text: ON
+      color: green
+    $!on:
+      text: OFF
+      color: white
+
   Label
     id: labelFollow
-    anchors.top: prev.bottom
-    anchors.left: prev.left
+    anchors.top: navAttack.bottom
+    anchors.left: navAttack.left
     margin-top: 10
-    text: Player Follow:
-    font: verdana-11px-rounded
+    text: PLAYER FOLLOW:
     text-auto-resize: true
-    color: gray
+    font: verdana-9px
+    text-auto-resize: true
+    color: #d7c08a
 
-  BotTextEdit
+  TextEdit
     id: navLeader
     anchors.top: prev.bottom
     anchors.left: prev.left
     anchors.right: navConfig.right
     margin-right: 5
-    image-color: gray
+    margin-top: 4
+    image-color: #2f2f2f
+    placeholder: INSERT FOLLOW NAME!
+    placeholder-font: verdana-9px
+    font: verdana-9px
 
-  CheckBox
-    id: attackCheck
-    anchors.top: prev.bottom
+  HorizontalSeparator
+    id: sep1
     anchors.left: prev.left
-    text-auto-resize: true
-    image-source: /images/ui/checkbox_round
-    font: verdana-9px-italic
-    color: gray
-    margin-top: 12
-    margin-left: 0
-    text: ATTACK LEADER
+    anchors.right: prev.right
+    anchors.top: prev.bottom
+    margin-top: 5
+    image-color: black
 
-  CheckBox
+  BotSwitch
     id: followCheck
-    anchors.top: prev.bottom
-    anchors.left: prev.left
-    text-auto-resize: true
-    image-source: /images/ui/checkbox_round
-    font: verdana-9px-italic
-    color: gray
-    margin-top: 7
-    text: FOLLOW PLAYER
+    anchors.top: labelFollow.top
+    anchors.left: labelFollow.right
+    image-source: /images/ui/button_rounded
+    font: verdana-9px
+    size: 50 15
+    margin-top: 0
+    margin-left: 28
+    $on:
+      text: ON
+      color: green
+    $!on:
+      text: OFF
+      color: white
 
-  FlatPanel
-    id: navUEConfig
-    anchors.top: navConfig.bottom
-    anchors.left: parent.left
-    height: 130
-    width: 180
-    image-color: #363636
-    margin-left: 10
-    margin-top: 10
-    layout: verticalBox
+  BotSwitch
+    id: onSouLider
+    anchors.top: sep1.bottom
+    anchors.left: sep1.left
+    margin-top: 4
+    size: 15 15
+    image-source: /images/ui/button_rounded
+    font: verdana-9px
 
   Label
-    id: UELabel
-    anchors.verticalCenter: navUEConfig.top
-    anchors.left: navUEConfig.left
+    id: labelSouLIder
+    anchors.top: onSouLider.top
+    anchors.left: onSouLider.right
+    margin-top: 1
     margin-left: 5
-    text: UE CONFIG:
+    text: SOU LIDER
     text-auto-resize: true
-    font: verdana-9px-italic
+    font: verdana-9px
+    text-auto-resize: true
+    color: #d7c08a
+
+  Panel
+    id: navUEConfig
+    anchors.top: navConfig.top
+    anchors.left: navConfig.right
+    height: 125
+    width: 170
+    margin-left: 10
+    margin-top: 0
+    background-color: #1b1b1b
+    opacity: 0.95
+    border: 1 #3b2a10
 
   Label
     id: labelUELeader
-    anchors.top: UELabel.bottom
-    anchors.left: UELabel.left
-    margin-top: 10
-    text: Leader UE:
+    anchors.top: infolist1.bottom
+    anchors.left: navUEConfig.left
+    margin-top: 8
+    margin-left: 5
+    text: LEADER UE:
+    font: verdana-9px
     text-auto-resize: true
-    font: verdana-11px-rounded
-    color: gray
+    color: #d7c08a
 
-  BotTextEdit
+  TextEdit
     id: UELeader
     anchors.top: prev.bottom
     anchors.left: prev.left
     anchors.right: navUEConfig.right
     margin-right: 5
-    image-color: gray
+    margin-top: 4
+    image-color: #2f2f2f
+    placeholder: INSERT LEADER UE!
+    placeholder-font: verdana-9px
+    font: verdana-9px
 
   Label
     id: UESpellLabel
-    anchors.top: UELeader.bottom
-    anchors.left: UELeader.left
+    anchors.top: prev.bottom
+    anchors.left: prev.left
     margin-top: 10
-    text: UE Spell:
+    text: UE SPELL:
     text-auto-resize: true
-    font: verdana-11px-rounded
-    color: gray
-    visible: true
+    font: verdana-9px
+    text-auto-resize: true
+    color: #d7c08a
 
-  BotTextEdit
+  TextEdit
     id: UESpell
     anchors.top: prev.bottom
     anchors.left: prev.left
-    anchors.right: navConfig.right
+    anchors.right: navUEConfig.right
     margin-right: 5
-    image-color: gray
+    margin-top: 4
+    image-color: #2f2f2f
+    placeholder: INSERT UE SPELL!
+    placeholder-font: verdana-9px
+    font: verdana-9px
 
-  CheckBox
-    id: useUEcheck
-    anchors.top: prev.bottom
+  HorizontalSeparator
+    id: sep2
     anchors.left: prev.left
+    anchors.right: prev.right
+    anchors.top: prev.bottom
+    margin-top: 5
+    image-color: black
+
+  BotSwitch
+    id: useUEcheck
+    anchors.top: UESpellLabel.top
+    anchors.right: UESpell.right
+    image-source: /images/ui/button_rounded
+    font: verdana-9px
+    size: 50 15
+    margin-top: -2
+    margin-left: 28
+    $on:
+      text: ON
+      color: green
+    $!on:
+      text: OFF
+      color: white
+
+  BotSwitch
+    id: onAbrirChat
+    anchors.top: sep2.bottom
+    anchors.left: sep2.left
+    margin-top: 4
+    size: 15 15
+    image-source: /images/ui/button_rounded
+    font: verdana-9px
+
+  Label
+    id: labelAbriParty
+    anchors.top: onAbrirChat.top
+    anchors.left: onAbrirChat.right
+    margin-top: 1
+    margin-left: 5
+    text: ABRIR CHAT PARTY
     text-auto-resize: true
-    image-source: /images/ui/checkbox_round
-    font: verdana-9px-italic
-    color: gray
-    margin-top: 12
-    margin-left: 0
-    text: USAR UE
+    font: verdana-9px
+    text-auto-resize: true
+    color: #d7c08a
+
+  Panel
+    id: ropePanel
+    anchors.top: navConfig.bottom
+    anchors.left: parent.left
+    anchors.right: parent.right
+    width: 180
+    height: 25
+    margin-top: 5
+    margin-left: 10
+    margin-right: 10
+    font: verdana-9px
+    background-color: black
+    border: 1 #1f1f1f
+
+    Label
+      id: toolsNavLabel
+      anchors.left: parent.left
+      anchors.top: parent.top
+      margin-top: 6
+      margin-left: 5
+      text: INSIRA O ID DA CORDA:
+      text-auto-resize: true
+      font: verdana-9px
+      color: gray
+
+  BotTextEdit
+    id: ropeID
+    anchors.top: ropePanel.top
+    anchors.right: ropePanel.right
+    margin-right: 6
+    margin-top: 3
+    width: 180
+    height: 19
+    image-color: #2f2f2f
+    placeholder: INSERT UE SPELL!
+    placeholder-font: verdana-9px
+    font: verdana-9px
 
   FlatPanel
     id: toolsNav
-    anchors.top: navConfig.top
-    anchors.left: navConfig.right
+    anchors.top: ropePanel.bottom
+    anchors.left: ropePanel.left
+    anchors.right: ropePanel.right
+    anchors.bottom: parent.bottom
+    margin-bottom: 10
+    margin-top: 2
     height: 289
     width: 180
-    margin-left: 10
     image-color: #363636
     layout: verticalBox
-
-  Label
-    id: toolsNavLabel
-    anchors.verticalCenter: toolsNav.top
-    anchors.left: toolsNav.left
-    margin-left: 5
-    text: TOOLS FOLLOW CONFIG
-    text-auto-resize: true
-    font: verdana-9px-italic
-
-  Label
-    id: IDHOPE
-    anchors.top: toolsNavLabel.bottom
-    anchors.left: toolsNavLabel.left
-    margin-top: 10
-    text: ROPE ID:
-    font: verdana-9px-italic
     
-  BotTextEdit
-    id: ropeID
-    anchors.top: prev.bottom
-    anchors.left: prev.left
-    anchors.right: toolsNav.right
-    margin-right: 5
-    image-color: gray
-
   Label
     id: RopeLabel
-    anchors.top: prev.bottom
-    anchors.left: toolsNavLabel.left
-    margin-top: 10
+    anchors.top: ropePanel.bottom
+    anchors.left: ropePanel.left
+    margin-top: 5
+    margin-left: 5
     text: IDS CORDA:
-    font: verdana-9px-italic
+    font: verdana-9px
+    text-auto-resize: true
+    color: #d7c08a
 
   BotContainer
     id: ropeIds
     anchors.top: prev.bottom
-    anchors.left: toolsNavLabel.left
+    anchors.left: prev.left
     anchors.right: toolsNav.right
     margin-left: -2
-    margin-right: 2
+    margin-right: 5
     height: 34
 
   Label
     id: useLabel
     anchors.top: prev.bottom
     anchors.left: prev.left
-    margin-top: 10
+    margin-top: 5
     text: IDS USE:
-    font: verdana-9px-italic
+    font: verdana-9px
+    text-auto-resize: true
+    color: #d7c08a
 
   BotContainer
     id: useIds
     anchors.top: prev.bottom
-    anchors.left: toolsNavLabel.left
+    anchors.left: useLabel.left
     anchors.right: toolsNav.right
-    margin-left: -2
-    margin-right: 2
+    margin-right: 5
     height: 34
 
   Label
     id: stairLabel
     anchors.top: prev.bottom
     anchors.left: prev.left
-    margin-top: 10
+    margin-top: 5
     text: IDS ESCADA:
-    font: verdana-9px-italic
+    font: verdana-9px
+    text-auto-resize: true
+    color: #d7c08a
 
   BotContainer
     id: stairIds
     anchors.top: prev.bottom
-    anchors.left: toolsNavLabel.left
+    anchors.left: stairLabel.left
     anchors.right: toolsNav.right
-    margin-left: -2
-    margin-right: 2
+    margin-right: 5
     height: 34
 
   Label
     id: buracoLabel
     anchors.top: prev.bottom
     anchors.left: prev.left
-    margin-top: 10
-    text: IDS BURACOS & TELEPORTS:
-    font: verdana-9px-italic
+    margin-top: 5
+    text: IDS BURACOS/TELEPORTS
+    font: verdana-9px
+    text-auto-resize: true
+    color: #d7c08a
 
   BotContainer
     id: buracoIds
     anchors.top: prev.bottom
-    anchors.left: toolsNavLabel.left
+    anchors.left: buracoLabel.left
     anchors.right: toolsNav.right
-    margin-left: -2
-    margin-right: 2
+    margin-right: 5
     height: 34
 
 
 ]], g_ui.getRootWidget())
-navPanel:hide()
+navPanel:show()
 navPanel:setId(scriptsPanelName)
 
 followButton.settings.onClick = function()
@@ -424,23 +550,27 @@ for _, id in ipairs(textEditIds) do
   end
 end
 
-local checkBoxIds = { "attackCheck", "followCheck", "useUEcheck" }
+local function bindBotSwitch(panel, widgetId, storageKey)
+  local w = panel:getChildById(widgetId)
+  if not w then return end
 
-for _, id in ipairs(checkBoxIds) do
-  local checkbox = navPanel:getChildById(id)
-  if checkbox then
-    -- carregar valor salvo ou usar default (false)
-    local savedValue = storage[scriptsPanelName].checkboxes[id]
-    if savedValue ~= nil then
-      checkbox:setChecked(savedValue)
-    end
+  local st = storage[scriptsPanelName].switches
+  if st[storageKey] == nil then st[storageKey] = false end
 
-    -- toda vez que mudar, salvar no charStorage
-    checkbox.onCheckChange = function(widget, checked)
-      storage[scriptsPanelName].checkboxes[id] = checked
-    end
+  w:setOn(st[storageKey] == true)
+
+  w.onClick = function(widget)
+    local newState = not widget:isOn()
+    widget:setOn(newState)
+    st[storageKey] = newState
   end
 end
+
+bindBotSwitch(navPanel, "attackCheck", "attackCheck")
+bindBotSwitch(navPanel, "followCheck", "followCheck")
+bindBotSwitch(navPanel, "useUEcheck",  "useUEcheck")
+bindBotSwitch(navPanel, "onSouLider",  "souLider")
+bindBotSwitch(navPanel, "onAbrirChat", "abrirChatParty")
 
 local useROPEContainer = navPanel:getChildById('ropeIds')
 local useIDSContainer = navPanel:getChildById('useIds')
@@ -694,7 +824,7 @@ end
 macro(200, function()
   if not storage[switchFollow] or storage[switchFollow].enabled ~= true then return end
   local target = storage[scriptsPanelName].texts["navLeader"]
-  if not navPanel.followCheck:isChecked() then return; end
+  if storage[scriptsPanelName].switches.followCheck ~= true then return; end
   if not g_game.isAttacking() then
     local c = getCreatureByName(target)
 
@@ -754,7 +884,7 @@ end)
 
 macro(200, function()
   if not storage[switchFollow] or storage[switchFollow].enabled ~= true then return end
-  if g_game.isAttacking() and navPanel.followCheck:isChecked() then
+  if g_game.isAttacking() and storage[scriptsPanelName].switches.followCheck == true then
     if not leader then
         local leaderPos = leaderPositions[posz()]
         if leaderPos and getDistanceBetween(player:getPosition(), leaderPos) > 0 then
@@ -801,7 +931,7 @@ macro(200, function()
 end)
 
 onCreaturePositionChange(function(creature, newPos, oldPos)
-    if not navPanel.followCheck:isChecked() then return; end
+    if storage[scriptsPanelName].switches.followCheck ~= true then return; end
     if creature:getName() == player:getName() then standTime = now; return end
     if creature:getName():lower() ~= (storage[scriptsPanelName].texts["navLeader"] or ""):lower() then return end
     if newPos then
@@ -817,14 +947,14 @@ onCreaturePositionChange(function(creature, newPos, oldPos)
 end)
 
 onCreatureAppear(function(creature)
-    if not navPanel.followCheck:isChecked() then return; end
+    if storage[scriptsPanelName].switches.followCheck ~= true then return; end
     if creature:getName():lower() == (storage[scriptsPanelName].texts["navLeader"] or ""):lower() and creature:getPosition().z == posz() then
         leader = creature
     end
 end)
 
 onCreatureDisappear(function(creature)
-    if not navPanel.followCheck:isChecked() then return; end
+    if storage[scriptsPanelName].switches.followCheck ~= true then return; end
     if creature:getName():lower() == (storage[scriptsPanelName].texts["navLeader"] or ""):lower() then
         leader = nil
     end
@@ -859,11 +989,121 @@ onMissle(function(missle)
   if t1:getName():lower() == storage[scriptsPanelName].texts["navAttack"]:lower() then return end
   
   if c1:getName():lower() == storage[scriptsPanelName].texts["navAttack"]:lower() then
-    if navPanel.attackCheck:isChecked() then
+    if player:isPartyMember() or player:isPartyLeader() or player:getShield() > 2 then return end
+    if storage[scriptsPanelName].switches.attackCheck == true then
     local target = g_game.getAttackingCreature()
       if not target or target ~= t1 then
         g_game.attack(t1)
       end
     end
   end
+end)
+
+local fecharChannel = 0
+
+macro(1000, function()
+  if storage[scriptsPanelName].switches.abrirChatParty ~= true then return end
+  if not (player:isPartyMember() or player:getShield() > 2 or player:isPartyLeader()) then return end
+
+  -- Se ainda não estiver no Party, abre e agenda fechamento
+  if not modules.game_console.getTab("Party") then
+    g_game.requestChannels()
+    g_game.joinChannel(1)
+    fecharChannel = now + 2000 -- agenda para fechar em 2s
+  end
+
+  -- Só destrói se passou o tempo
+  if fecharChannel > 0 and now >= fecharChannel then
+    local w = nil
+
+    -- tenta pegar do módulo
+    if modules and modules.game_console then
+      w = modules.game_console.channelsWindow
+    end
+
+    -- fallback root
+    if not w then
+      local root = g_ui.getRootWidget()
+      if root and root.recursiveGetChildById then
+        w = root:recursiveGetChildById('channelsWindow')
+      end
+    end
+
+    if w then
+      w:destroy()
+      if modules and modules.game_console then
+        modules.game_console.channelsWindow = nil
+      end
+    end
+
+    fecharChannel = 0 -- reseta para não destruir de novo
+  end
+end)
+
+local leaderWait = 0
+local lastTarget = nil
+
+local function encodeTargetId(id)
+  local s = tostring(id)
+  -- padrão feito pra 10 dígitos (como no seu exemplo)
+  if #s >= 10 then
+    local p1 = s:sub(1,1)
+    local p2 = s:sub(2,3)
+    local p3 = s:sub(4,4)
+    local p4 = s:sub(5,6)
+    local p5 = s:sub(7,8)
+    local p6 = s:sub(9,10)
+    return "." .. p1 .. "@" .. p2 .. "#" .. p3 .. "!" .. p4 .. "+" .. p5 .. "[" .. p6 .. "]"
+  end
+
+  -- fallback (se vier id com outro tamanho)
+  return "." .. s
+end
+
+local function decodeTargetId(text)
+  -- remove tudo que não for dígito e transforma em number
+  local digits = (text or ""):gsub("%D", "")
+  if digits == "" then return nil end
+  return tonumber(digits)
+end
+
+-- =========================
+-- LEADER: fala no party
+-- =========================
+macro(1000, function()
+  if storage[scriptsPanelName].switches.souLider ~= true then return end
+  if not (player:isPartyMember() or player:isPartyLeader() or player:getShield() > 2) then return end
+
+  local t = g_game.getAttackingCreature()
+  if not t then return end
+
+  if leaderWait >= now and lastTarget == t then return end
+  lastTarget = t
+
+  local msg = "ATACAR: " .. encodeTargetId(t:getId())
+  sayChannel(1, msg)
+
+  leaderWait = now + 4000
+end)
+
+-- =========================
+-- FOLLOWERS: atacam pelo chat
+-- =========================
+onTalk(function(name, level, mode, text, channelId, pos)
+  if storage[scriptsPanelName].switches.attackCheck ~= true then return end
+  if channelId ~= 1 then return end
+
+  local leaderName = (storage[scriptsPanelName].texts["navAttack"] or ""):lower()
+  if leaderName == "" then return end
+  if name:lower() ~= leaderName then return end
+
+  local id = decodeTargetId(text)
+  if not id then return end
+
+  local target = getCreatureById(id)
+  if not target then return end
+  if target:getPosition().z ~= posz() then return end
+
+  if g_game.getAttackingCreature() == target then return end
+  g_game.attack(target)
 end)
