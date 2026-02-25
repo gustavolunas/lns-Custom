@@ -518,7 +518,7 @@ UIWindow
 
 
 ]], g_ui.getRootWidget())
-navPanel:show()
+navPanel:hide()
 navPanel:setId(scriptsPanelName)
 
 followButton.settings.onClick = function()
@@ -1107,4 +1107,5 @@ onTalk(function(name, level, mode, text, channelId, pos)
   if g_game.getAttackingCreature() == target then return end
   g_game.attack(target)
 end)
+
 
