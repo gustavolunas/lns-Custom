@@ -1046,7 +1046,7 @@ local lastTarget = nil
 local function encodeTargetId(id)
   local s = tostring(id)
   -- padrão feito pra 10 dígitos (como no seu exemplo)
-  if #s >= 10 then
+  if #s >= 8 then
     local p1 = s:sub(1,1)
     local p2 = s:sub(2,3)
     local p3 = s:sub(4,4)
@@ -1107,3 +1107,4 @@ onTalk(function(name, level, mode, text, channelId, pos)
   if g_game.getAttackingCreature() == target then return end
   g_game.attack(target)
 end)
+
