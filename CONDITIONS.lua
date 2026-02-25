@@ -3,9 +3,9 @@ local panelName = "conditionsInterface"
 
 if not storage[panelName] then
   storage[panelName] = {
-    checks = {},
-    combos = {},
-    texts  = {}
+    switches = {},
+    combos   = {},
+    texts    = {}
   }
 end
 
@@ -65,324 +65,502 @@ end
 conditionsInterface = setupUI([[
 UIWindow
   id: mainPanel
-  size: 310 340
-  border: 1 black
+  size: 320 440
   anchors.centerIn: parent
   margin-top: -60
+  opacity: 1.00
 
   Panel
     id: background
-    anchors.top: parent.top
-    anchors.left: parent.left
-    anchors.right: parent.right
-    anchors.bottom: parent.bottom
-    background-color: black
-    opacity: 0.70
+    anchors.fill: parent
+    background-color: #0b0b0b
+    opacity: 0.88
 
   Panel
-    id: topPanel
+    id: topBar
     anchors.top: parent.top
     anchors.left: parent.left
     anchors.right: parent.right
-    size: 120 30
-    text-align: center
-    !text: tr('LNS Custom | Perfect Conditions')
+    height: 30
+    background-color: #111111
+    opacity: 1.00
+    border: 1 #1f1f1f
+
+  Label
+    id: titleLabel
+    anchors.centerIn: topBar
+    text: LNS Custom | Perfect Conditions
+    text-auto-resize: true
     color: orange
-    margin-left: 0
-    margin-right: 0
-    background-color: black
-    $hover:
-      image-color: gray
-  
-  Panel
-    id: iconPanel
-    anchors.top: parent.top
-    anchors.left: parent.left
-    size: 60 60
-    margin-top: -19
-    margin-left: -15
+    font: verdana-11px-rounded
 
   UIButton
     id: closePanel
-    anchors.top: topPanel.top
-    anchors.right: parent.right
-    size: 18 18
-    margin-top: 6
-    margin-right: 10
-    background-color: orange
+    anchors.right: topBar.right
+    anchors.verticalCenter: topBar.verticalCenter
+    size: 20 20
+    margin-right: 8
     text: X
+    background-color: orange
     color: white
     opacity: 1.00
     $hover:
       color: black
-      opacity: 0.80
+      opacity: 0.85
 
-  FlatPanel
-    id: panelSpeed
+  Panel
+    id: infolist1
     anchors.top: prev.bottom
-    anchors.right: parent.right
     anchors.left: parent.left
-    margin-top: 15
-    margin-right: 8
+    anchors.right: parent.right
+    margin-top: 10
+    margin-left: 10
+    margin-right: 10
+    text: SPEEDS & BUFFS
+    font: verdana-9px
+    background-color: black
+    border: 1 #1f1f1f
+    color: gray
+
+  Panel
+    id: cardsRow
+    anchors.top: infolist1.bottom
+    anchors.left: infolist1.left
+    anchors.right: infolist1.right
+    margin-top: 2
+    height: 145
+    background-color: alpha
+
+  Panel
+    id: cardSpeed
+    anchors.top: cardsRow.top
+    anchors.left: cardsRow.left
+    anchors.right: cardsRow.right
+    height: 145
+    background-color: #1b1b1b
+    opacity: 0.95
+    border: 1 #3b2a10
+    
+  Panel
+    id: rowHaste
+    anchors.top: cardSpeed.top
+    anchors.left: cardSpeed.left
+    anchors.right: cardSpeed.right
+    height: 28
+    margin-top: 8
+    background-color: alpha
+
+  BotSwitch
+    id: spellHaste
+    anchors.left: rowHaste.left
+    anchors.verticalCenter: rowHaste.verticalCenter
     margin-left: 8
-    height: 105
-    image-color: #363636
-    layout: verticalBox
+    width: 22
+    height: 22
+    text: ""
+    image-source: /images/ui/button_rounded
+    image-color: #2a2a2a
+    $on:
+      image-color: green
+    $!on:
+      image-color: #2a2a2a
 
   Label
-    id: labelSpeed
-    anchors.top: prev.top
-    anchors.left: panelMain.left
-    text: SPEED & BUFFS:
-    text-auto-resize: true
-    font: verdana-9px-italic
-    margin-top: -5
-    margin-left: 10
-
-  CheckBox
-    id: spellHaste
-    anchors.top: prev.bottom
-    anchors.left: prev.left
-    margin-top: 10
-    width: 90
-    text: Haste:
-    font: verdana-11px-rounded
-    color: white
-    image-source: /images/ui/checkbox_round
+    id: lblHaste
+    anchors.left: spellHaste.right
+    anchors.verticalCenter: spellHaste.verticalCenter
+    margin-left: 8
+    text: HASTE
+    font: verdana-9px
+    color: #d7c08a
 
   ComboBox
     id: comboHaste
-    anchors.verticalCenter: prev.verticalCenter
-    anchors.left: prev.right
-    anchors.right: panelSpeed.right
-    margin-right: 10
-    width: 130
-    image-color: #828282
+    anchors.right: rowHaste.right
+    anchors.verticalCenter: rowHaste.verticalCenter
+    margin-right: 8
+    width: 150
+    image-color: #2f2f2f
+    font: verdana-9px
     @onSetup: |
       self:addOption("")
       self:addOption("Utani Hur")
       self:addOption("Utani Gran Hur")
       self:addOption("Utani Tempo Hur")
 
-  CheckBox
+  Panel
+    id: rowBuff
+    anchors.top: rowHaste.bottom
+    anchors.left: cardSpeed.left
+    anchors.right: cardSpeed.right
+    height: 28
+    margin-top: 6
+    background-color: alpha
+
+  BotSwitch
     id: spellBuff
-    anchors.top: prev.bottom
-    anchors.left: spellHaste.left
-    margin-top: 8
-    width: 90
-    text: Buff:
-    font: verdana-11px-rounded
-    color: white
-    image-source: /images/ui/checkbox_round
+    anchors.left: rowBuff.left
+    anchors.verticalCenter: rowBuff.verticalCenter
+    margin-left: 8
+    width: 22
+    height: 22
+    text: ""
+    image-source: /images/ui/button_rounded
+    image-color: #2a2a2a
+    $on:
+      image-color: green
+    $!on:
+      image-color: #2a2a2a
+
+  Label
+    id: lblBuff
+    anchors.left: spellBuff.right
+    anchors.verticalCenter: spellBuff.verticalCenter
+    margin-left: 8
+    text: BUFF
+    font: verdana-9px
+    color: #d7c08a
 
   ComboBox
     id: comboBuff
-    anchors.verticalCenter: prev.verticalCenter
-    anchors.left: prev.right
-    anchors.right: panelSpeed.right
-    margin-right: 10
-    width: 130
-    image-color: #828282
+    anchors.right: rowBuff.right
+    anchors.verticalCenter: rowBuff.verticalCenter
+    margin-right: 8
+    width: 150
+    font: verdana-9px
+    image-color: #2f2f2f
     @onSetup: |
       self:addOption("")
       self:addOption("Utito Tempo")
       self:addOption("Utito Tempo San")
-      
-  CheckBox
+
+  Panel
+    id: rowAntiLyze
+    anchors.top: rowBuff.bottom
+    anchors.left: cardSpeed.left
+    anchors.right: cardSpeed.right
+    height: 28
+    margin-top: 6
+    background-color: alpha
+
+  BotSwitch
     id: spellAntilyze
-    anchors.top: prev.bottom
-    anchors.left: spellBuff.left
-    margin-top: 8
-    width: 90
-    text: AntiLyze:
-    font: verdana-11px-rounded
-    color: white
-    image-source: /images/ui/checkbox_round
+    anchors.left: rowAntiLyze.left
+    anchors.verticalCenter: rowAntiLyze.verticalCenter
+    margin-left: 8
+    width: 22
+    height: 22
+    text: ""
+    image-source: /images/ui/button_rounded
+    image-color: #2a2a2a
+    $on:
+      image-color: green
+    $!on:
+      image-color: #2a2a2a
 
-  BotTextEdit
+  Label
+    id: lblAntiLyze
+    anchors.left: spellAntilyze.right
+    anchors.verticalCenter: spellAntilyze.verticalCenter
+    margin-left: 8
+    text: ANTILYZE
+    font: verdana-9px
+    color: #d7c08a
+
+  TextEdit
     id: comboAntilyze
-    anchors.verticalCenter: prev.verticalCenter
-    anchors.left: prev.right
-    anchors.right: panelSpeed.right
-    margin-right: 10
-    width: 130
-    image-color: #828282
+    anchors.right: rowAntiLyze.right
+    anchors.verticalCenter: rowAntiLyze.verticalCenter
+    margin-right: 8
+    width: 150
+    height: 20
+    image-color: #2f2f2f
+    font: verdana-9px
+    color: white
+    placeholder: INSERT ANTI-LYZE SPELL
+    placeholder-font: verdana-9px
 
-  CheckBox
+  Panel
+    id: rowUtura
+    anchors.top: rowAntiLyze.bottom
+    anchors.left: cardSpeed.left
+    anchors.right: cardSpeed.right
+    height: 28
+    margin-top: 6
+    background-color: alpha
+
+  BotSwitch
     id: spellUtura
-    anchors.top: prev.bottom
-    anchors.left: spellAntilyze.left
-    anchors.right: panelSpeed.right
-    margin-top: 8
-    text: Utura Gran
-    font: verdana-11px-rounded
-    color: white
-    image-source: /images/ui/checkbox_round
-
-  FlatPanel
-    id: panelMain
-    anchors.top: panelSpeed.bottom
-    anchors.right: parent.right
-    anchors.left: parent.left
-    margin-top: 10
-    margin-right: 8
+    anchors.left: rowUtura.left
+    anchors.verticalCenter: rowUtura.verticalCenter
     margin-left: 8
-    height: 55
-    image-color: #363636
-    layout: verticalBox
+    width: 22
+    height: 22
+    text: ""
+    image-source: /images/ui/button_rounded
+    image-color: #2a2a2a
+    $on:
+      image-color: green
+    $!on:
+      image-color: #2a2a2a
 
   Label
-    id: labelHealing
-    anchors.top: prev.top
-    anchors.left: panelMain.left
-    text: CURE STATUS:
-    text-auto-resize: true
-    font: verdana-9px-italic
-    margin-top: -5
-    margin-left: 10
-
-  CheckBox
-    id: curePoison
-    anchors.top: prev.bottom
-    anchors.left: labelHealing.left
-    margin-top: 8
-    width: 110
-    text: Poison
-    font: verdana-11px-rounded
-    color: white
-    image-source: /images/ui/checkbox_round
-
-  CheckBox
-    id: cureFire
-    anchors.top: prev.top
-    anchors.left: prev.right
-    width: 100
-    text: Burn
-    font: verdana-11px-rounded
-    color: white
-    image-source: /images/ui/checkbox_round
-
-  CheckBox
-    id: cureEnergy
-    anchors.top: prev.top
-    anchors.left: prev.right
-    width: 110
-    text: Energy
-    font: verdana-11px-rounded
-    color: white
-    image-source: /images/ui/checkbox_round
-
-  CheckBox
-    id: cureCurse
-    anchors.top: curePoison.bottom
-    anchors.left: labelHealing.left
-    margin-top: 12
-    width: 110
-    text: Curse
-    font: verdana-11px-rounded
-    color: white
-    image-source: /images/ui/checkbox_round
-
-  CheckBox
-    id: cureBleeding
-    anchors.top: prev.top
-    anchors.left: prev.right
-    width: 100
-    text: Bleed
-    font: verdana-11px-rounded
-    color: white
-    image-source: /images/ui/checkbox_round
-
-  FlatPanel
-    id: abaSelfBuffs
-    anchors.top: panelMain.bottom
-    anchors.right: parent.right
-    anchors.left: parent.left
-    margin-top: 10
-    margin-right: 8
+    id: lblUtura
+    anchors.left: spellUtura.right
+    anchors.verticalCenter: spellUtura.verticalCenter
     margin-left: 8
-    height: 120
-    image-color: #363636
-    layout: verticalBox
+    text: UTURA GRAN
+    font: verdana-9px
+    color: #d7c08a
 
-  Label
-    id: labelCureStatus
-    anchors.top: prev.top
-    anchors.left: abaSelfBuffs.left
-    text: TOOLS CONFIGURATIONS:
-    text-auto-resize: true
-    font: verdana-9px-italic
-    margin-top: -5
-    margin-left: 10
+  TextEdit
+    id: textUturaGran
+    anchors.right: rowUtura.right
+    anchors.verticalCenter: rowUtura.verticalCenter
+    margin-right: 8
+    width: 150
+    height: 20
+    image-color: #2f2f2f
+    font: verdana-9px
+    color: white
+    placeholder: INSERT UTURA SPELL
+    placeholder-font: verdana-9px
 
-  CheckBox
-    id: spellUtamo
-    anchors.top: prev.bottom
-    anchors.left: prev.left
+  Panel
+    id: infolist2
+    anchors.top: cardsRow.bottom
+    anchors.left: parent.left
+    anchors.right: parent.right
     margin-top: 10
-    text-auto-resize: true
-    text: Auto Magic Shield
-    font: verdana-11px-rounded
-    color: white
-    image-source: /images/ui/checkbox_round
-
-  CheckBox
-    id: spellUtana
-    anchors.top: prev.bottom
-    anchors.left: spellHaste.left
-    margin-top: 8
-    text: Auto Invisible
-    text-auto-resize: true
-    font: verdana-11px-rounded
-    color: white
-    image-source: /images/ui/checkbox_round
-
-  CheckBox
-    id: exetaRes
-    anchors.top: prev.bottom
-    anchors.left: spellHaste.left
-    margin-top: 8
-    text: Exeta Res
-    text-auto-resize: true
-    font: verdana-11px-rounded
-    color: white
-    image-source: /images/ui/checkbox_round
-    
-  CheckBox
-    id: exetaAmpRes
-    anchors.top: prev.bottom
-    anchors.left: spellHaste.left
-    margin-top: 8
-    text: Amp Res:
-    width: 90
-    font: verdana-11px-rounded
-    color: white
-    image-source: /images/ui/checkbox_round
-
-  BotTextEdit
-    id: textAmpRes
-    anchors.verticalCenter: prev.verticalCenter
-    anchors.left: prev.right
-    anchors.right: panelSpeed.right
+    margin-left: 10
     margin-right: 10
-    width: 130
-    height: 18
-    image-color: #828282
+    text: TOOLS CONFIGURATIONS
+    font: verdana-9px
+    background-color: black
+    border: 1 #1f1f1f
+    color: gray
 
-  CheckBox
-    id: exetaLoot
-    anchors.top: exetaAmpRes.bottom
-    anchors.left: spellHaste.left
+  Panel
+    id: actions
+    anchors.top: infolist2.bottom
+    anchors.left: infolist2.left
+    anchors.right: infolist2.right
+    anchors.bottom: parent.bottom
+    margin-bottom: 10
+    margin-top: 2
+    background-color: #141414
+    opacity: 0.92
+    border: 1 #3b2a10
+
+  Panel
+    id: rowUtamo
+    anchors.top: actions.top
+    anchors.left: actions.left
+    anchors.right: actions.right
+    height: 30
     margin-top: 8
-    text: Exeta Loot
-    text-auto-resize: true
-    font: verdana-11px-rounded
+    background-color: alpha
+
+  BotSwitch
+    id: spellUtamo
+    anchors.left: rowUtamo.left
+    anchors.verticalCenter: rowUtamo.verticalCenter
+    margin-left: 8
+    width: 22
+    height: 22
+    text: ""
+    image-source: /images/ui/button_rounded
+    $on: 
+      image-color: green
+    $!on:
+      image-color: #2a2a2a
+
+  Label
+    id: lblUtamo
+    anchors.left: spellUtamo.right
+    anchors.verticalCenter: spellUtamo.verticalCenter
+    margin-left: 10
+    text: AUTO MAGIC SHIELD
+    font: verdana-9px
+    color: #d7c08a
+
+  Panel
+    id: rowUtana
+    anchors.top: rowUtamo.bottom
+    anchors.left: actions.left
+    anchors.right: actions.right
+    height: 30
+    margin-top: 4
+    background-color: alpha
+
+  BotSwitch
+    id: spellUtana
+    anchors.left: rowUtana.left
+    anchors.verticalCenter: rowUtana.verticalCenter
+    margin-left: 8
+    width: 22
+    height: 22
+    text: ""
+    image-source: /images/ui/button_rounded
+    image-color: #2a2a2a
+    $on:
+      image-color: green
+      opacity: 1.00
+    $!on:
+      image-color: #2a2a2a
+      opacity: 0.95
+
+  Label
+    id: lblUtana
+    anchors.left: spellUtana.right
+    anchors.verticalCenter: spellUtana.verticalCenter
+    margin-left: 10
+    text: AUTO INVISIBLE
+    font: verdana-9px
+    color: #d7c08a
+
+  Panel
+    id: rowExetaRes
+    anchors.top: rowUtana.bottom
+    anchors.left: actions.left
+    anchors.right: actions.right
+    height: 30
+    margin-top: 4
+    background-color: alpha
+
+  BotSwitch
+    id: exetaRes
+    anchors.left: rowExetaRes.left
+    anchors.verticalCenter: rowExetaRes.verticalCenter
+    margin-left: 8
+    width: 22
+    height: 22
+    text: ""
+    image-source: /images/ui/button_rounded
+    $on:
+      image-color: green
+      opacity: 1.00
+    $!on:
+      image-color: #2a2a2a
+      opacity: 0.95
+
+  Label
+    id: lblExetaRes
+    anchors.left: exetaRes.right
+    anchors.verticalCenter: exetaRes.verticalCenter
+    margin-left: 10
+    text: EXETA RES
+    font: verdana-9px
+    color: #d7c08a
+
+  Panel
+    id: rowAmpRes
+    anchors.top: rowExetaRes.bottom
+    anchors.left: actions.left
+    anchors.right: actions.right
+    height: 30
+    margin-top: 4
+    background-color: alpha
+
+  BotSwitch
+    id: exetaAmpRes
+    anchors.left: rowAmpRes.left
+    anchors.verticalCenter: rowAmpRes.verticalCenter
+    margin-left: 8
+    width: 22
+    height: 22
+    text: ""
+    image-source: /images/ui/button_rounded
+    $on:
+      image-color: green
+      opacity: 1.00
+    $!on:
+      image-color: #2a2a2a
+      opacity: 0.95
+  Label
+    id: lblAmpRes
+    anchors.left: exetaAmpRes.right
+    anchors.verticalCenter: exetaAmpRes.verticalCenter
+    margin-left: 10
+    text: AMP RES
+    font: verdana-9px
+    color: #d7c08a
+
+  TextEdit
+    id: textAmpRes
+    anchors.right: rowAmpRes.right
+    anchors.verticalCenter: rowAmpRes.verticalCenter
+    margin-right: 8
+    width: 150
+    height: 20
+    image-color: #2f2f2f
+    font: verdana-9px
     color: white
-    image-source: /images/ui/checkbox_round
+    placeholder: INSERT AMP RES SPELL
+    placeholder-font: verdana-9px
+
+  Panel
+    id: rowExetaLoot
+    anchors.top: rowAmpRes.bottom
+    anchors.left: actions.left
+    anchors.right: actions.right
+    height: 30
+    margin-top: 4
+    background-color: alpha
+
+  BotSwitch
+    id: exetaLoot
+    anchors.left: rowExetaLoot.left
+    anchors.verticalCenter: rowExetaLoot.verticalCenter
+    margin-left: 8
+    width: 22
+    height: 22
+    text: ""
+    image-source: /images/ui/button_rounded
+    $on:
+      image-color: green
+      opacity: 1.00
+    $!on:
+      image-color: #2a2a2a
+      opacity: 0.95
+
+  Label
+    id: lblExetaLoot
+    anchors.left: exetaLoot.right
+    anchors.verticalCenter: exetaLoot.verticalCenter
+    margin-left: 10
+    text: EXETA LOOT
+    font: verdana-9px
+    color: #d7c08a
+
+  BotSwitch
+    id: cureStatus
+    anchors.left: exetaLoot.left
+    anchors.top: exetaLoot.bottom
+    margin-top: 13
+    width: 22
+    height: 22
+    text: ""
+    image-source: /images/ui/button_rounded
+    $on:
+      image-color: green
+      opacity: 1.00
+    $!on:
+      image-color: #2a2a2a
+      opacity: 0.95
+
+  Label
+    id: lblCureStatus
+    anchors.left: cureStatus.right
+    anchors.verticalCenter: cureStatus.verticalCenter
+    margin-left: 10
+    text: CURE STATUS
+    font: verdana-9px
+    color: #d7c08a
 
 ]], g_ui.getRootWidget())
-conditionsInterface:hide();
 
+conditionsInterface:hide()
 conditionsInterface.closePanel.onClick = function()
   conditionsInterface:hide()
 end
@@ -395,18 +573,34 @@ conditionsButton.settings.onClick = function()
     end
 end
 
-local function bindCheck(id)
+storage = storage or {}
+storage[panelName] = storage[panelName] or {}
+if storage[panelName].switches == nil and type(storage[panelName].checks) == "table" then
+  storage[panelName].switches = storage[panelName].checks
+  storage[panelName].checks = nil
+end
+
+storage[panelName].switches = storage[panelName].switches or {}
+storage[panelName].combos   = storage[panelName].combos   or {}
+storage[panelName].texts    = storage[panelName].texts    or {}
+
+local function bindSwitch(id)
   local w = conditionsInterface[id]
   if not w then return end
 
-  if storage[panelName].checks[id] ~= nil then
-    w:setChecked(storage[panelName].checks[id] and true or false)
+  storage[panelName].switches = storage[panelName].switches or {}
+
+  -- carregar estado salvo
+  if storage[panelName].switches[id] ~= nil then
+    w:setOn(storage[panelName].switches[id] and true or false)
   else
-    storage[panelName].checks[id] = w:isChecked() and true or false
+    storage[panelName].switches[id] = w:isOn() and true or false
   end
 
-  w.onCheckChange = function(widget, checked)
-    storage[panelName].checks[id] = checked and true or false
+  -- toggle manual (garante ficar verde)
+  w.onClick = function(widget)
+    widget:setOn(not widget:isOn())
+    storage[panelName].switches[id] = widget:isOn() and true or false
   end
 end
 
@@ -440,44 +634,112 @@ local function bindText(id)
   end
 end
 
-bindCheck("spellHaste")
+-- SPEED & BUFFS
+bindSwitch("spellHaste")
 bindCombo("comboHaste")
 
-bindCheck("spellBuff")
+bindSwitch("spellBuff")
 bindCombo("comboBuff")
 
-bindCheck("spellAntilyze")
+bindSwitch("spellAntilyze")
 bindText("comboAntilyze")
 
-bindCheck("spellUtura")
+bindSwitch("spellUtura")
+bindText("textUturaGran")
 
-bindCheck("curePoison")
-bindCheck("cureFire")
-bindCheck("cureEnergy")
-bindCheck("cureCurse")
-bindCheck("cureBleeding")
-
-bindCheck("spellUtamo")
-bindCheck("spellUtana")
-bindCheck("exetaRes")
-bindCheck("exetaAmpRes")
+bindSwitch("spellUtamo")
+bindSwitch("spellUtana")
+bindSwitch("exetaRes")
+bindSwitch("exetaAmpRes")
 bindText("textAmpRes")
-bindCheck("exetaLoot")
+bindSwitch("exetaLoot")
+bindSwitch("cureStatus")
 
+-- =========================
+-- CONDITIONS (BotSwitch)
+-- =========================
+local switchConditions = "conditionsButton"
+local panelName = "conditionsInterface"
+
+storage = storage or {}
+storage[switchConditions] = storage[switchConditions] or { enabled = false }
+storage[panelName] = storage[panelName] or {}
+
+-- MIGRAÇÃO: checks -> switches (se tiver storage antigo)
+if storage[panelName].switches == nil and type(storage[panelName].checks) == "table" then
+  storage[panelName].switches = storage[panelName].checks
+  storage[panelName].checks = nil
+end
+
+storage[panelName].switches = storage[panelName].switches or {}
+storage[panelName].combos   = storage[panelName].combos   or {}
+storage[panelName].texts    = storage[panelName].texts    or {}
+
+-- =========================
+-- Timers via onTalk
+-- =========================
 local userUturaTimer = 0
-local userBuffTimer = 0
+local userBuffTimer  = 0
+
+local function _trim(s)
+  return (tostring(s or ""):gsub("^%s+", ""):gsub("%s+$", ""))
+end
+
+local function _norm(s)
+  return _trim(s):lower()
+end
+
+local function getConfiguredUturaSpell()
+  local cfg = storage[panelName]
+  local t = cfg and cfg.texts and cfg.texts["textUturaGran"]
+  t = _norm(t)
+  if t == "" then t = "utura gran" end
+  return t
+end
+
+local function getConfiguredBuffSpell()
+  local cfg = storage[panelName]
+  local opt = cfg and cfg.combos and cfg.combos["comboBuff"]
+  opt = _norm(opt)
+  return opt
+end
+
+-- cooldowns baseados no tempo que você já usava no seu onTalk
+local function getUturaDurationMs()
+  return 60500
+end
+
+local function getBuffDurationMs()
+  -- você usava 10500 pros utito (server-side), mantém
+  return 10500
+end
 
 onTalk(function(name, level, mode, text, channelId, pos)
-    if name ~= g_game.getLocalPlayer():getName() then return end
-    text = text:lower()
-    if text == 'utura gran' then
-       userUturaTimer = now + 60500 
-    end
-    if text == 'utito tempo' or text == 'utito tempo san' then
-        userBuffTimer = now + 10500
-    end
+  local me = g_game.getLocalPlayer()
+  if not me then return end
+  if name ~= me:getName() then return end
+
+  local msg = _norm(text)
+  if msg == "" then return end
+
+  -- UTURA (lê do TextEdit)
+  local uturaSpell = getConfiguredUturaSpell()
+  if uturaSpell ~= "" and msg == uturaSpell then
+    userUturaTimer = now + getUturaDurationMs()
+    return
+  end
+
+  -- BUFF (lê do Combo)
+  local buffSpell = getConfiguredBuffSpell()
+  if buffSpell ~= "" and msg == buffSpell then
+    userBuffTimer = now + getBuffDurationMs()
+    return
+  end
 end)
 
+-- =========================
+-- Moving detector (pra haste)
+-- =========================
 local _lastMovePos = nil
 local _lastMoveMs  = 0
 
@@ -500,105 +762,132 @@ local function isMovingRecently(ms)
   return (_lastMoveMs > 0 and (now - _lastMoveMs) <= ms)
 end
 
-macro(200,  function()
-    if not storage["conditionsButton"] or not storage["conditionsButton"].enabled then return end
-    
-    local player = g_game.getLocalPlayer()
-    if not player then return end
-    if player:isNpc() then return end
-
-    local cfg = storage["conditionsInterface"]
-    if not cfg then return end
-
-    if cfg.checks["spellAntilyze"] then
-        if isParalyzed() then
-            local spell = cfg.texts["comboAntilyze"]
-            if spell and spell ~= "" then
-                say(spell)
-                return
-            end
-        end
-    end
-
-    if cfg.checks["spellHaste"] then
-      if not hasHaste() and not isParalyzed() then
-        if isInPz() then return end
-
-        -- SÓ CASTA HASTE SE ESTIVER EM MOVIMENTO
-        if not isMovingRecently(250) then return end
-
-        local spell = cfg.combos["comboHaste"]
-        if spell and spell ~= "" then
-          say(spell)
-        end
-      end
-    end
-
-    if cfg.checks["spellBuff"] then
-        if g_game.isAttacking() and not hasPartyBuff() and (now > userBuffTimer) then
-            local spell = cfg.combos["comboBuff"]
-            if spell and spell ~= "" then
-                say(spell)
-                userBuffTimer = now + 1000 
-            end
-        end
-    end
-
-    if cfg.checks["spellUtura"] then
-        if player:getMana() >= 200 and (now > userUturaTimer) then
-          say("utura gran")
-          userUturaTimer = now + 2000 
-        end
-    end
-end)
-
+-- =========================
+-- SPEED & BUFFS macro
+-- =========================
 macro(200, function()
   if not storage[switchConditions] or not storage[switchConditions].enabled then return end
-  if not storage[panelName] or not storage[panelName].checks then return end
 
-  local checks = storage[panelName].checks
+  local player = g_game.getLocalPlayer()
+  if not player or player:isNpc() then return end
 
-  if checks.curePoison and isPoisioned() then
+  local cfg = storage[panelName]
+  if not cfg or not cfg.switches then return end
+
+  local sw = cfg.switches
+  local combos = cfg.combos or {}
+  local texts  = cfg.texts  or {}
+
+  -- AntiLyze
+  if sw["spellAntilyze"] then
+    if isParalyzed() then
+      local spell = _trim(texts["comboAntilyze"])
+      if spell ~= "" then
+        say(spell)
+        return
+      end
+    end
+  end
+
+  -- Haste (só se estiver se movendo)
+  if sw["spellHaste"] then
+    if not hasHaste() and not isParalyzed() then
+      if isInPz() then return end
+      if not isMovingRecently(250) then return end
+
+      local spell = _trim(combos["comboHaste"])
+      if spell ~= "" then
+        say(spell)
+      end
+    end
+  end
+
+  -- Buff (agora respeita o timer do onTalk)
+  if sw["spellBuff"] then
+    if g_game.isAttacking() and (now > userBuffTimer) then
+      local spell = _trim(combos["comboBuff"])
+      if spell ~= "" then
+        say(spell)
+        -- trava pequeno anti-spam enquanto espera resposta
+        userBuffTimer = now + 1000
+      end
+    end
+  end
+
+  -- Utura (agora respeita o timer do onTalk + lê do TextEdit)
+  if sw["spellUtura"] then
+    if player:getMana() >= 200 and (now > userUturaTimer) then
+      local spell = _trim(texts["textUturaGran"])
+      if spell == "" then spell = "utura gran" end
+      say(spell)
+      -- trava pequeno anti-spam enquanto espera resposta
+      userUturaTimer = now + 2000
+    end
+  end
+end)
+
+-- =========================
+-- CURE STATUS (um BotSwitch único: cureStatus)
+-- =========================
+macro(200, function()
+  if not storage[switchConditions] or not storage[switchConditions].enabled then return end
+
+  local cfg = storage[panelName]
+  if not cfg or not cfg.switches then return end
+  if not cfg.switches["cureStatus"] then return end
+
+  -- Mantive as mesmas spells (tudo junto num único switch)
+  if isPoisioned() then
     say('exana pox')
     return
   end
 
-  if checks.cureFire and isBurning() then
+  if isBurning() then
     say('exana flam')
     return
   end
 
-  if checks.cureEnergy and isEnergized() then
+  if isEnergized() then
     say('exana vis')
     return
   end
 
-  if checks.cureCurse and isCursed() then
+  if isCursed() then
     say('exana mort')
     return
   end
 
-  if checks.cureBleeding and isBleeding() then
+  if isBleeding() then
     say('exana kor')
     return
   end
 end)
 
+-- =========================
+-- UTAMO (switch spellUtamo)
+-- =========================
 macro(200, function()
-  if not storage["conditionsButton"] or not storage["conditionsButton"].enabled then return end
-  if not storage["conditionsInterface"] or not storage["conditionsInterface"].checks then return end
-  if not storage["conditionsInterface"].checks.spellUtamo then return end
+  if not storage[switchConditions] or not storage[switchConditions].enabled then return end
+
+  local cfg = storage[panelName]
+  if not cfg or not cfg.switches then return end
+  if not cfg.switches["spellUtamo"] then return end
 
   if not hasManaShield() then
     say("utamo vita")
   end
 end)
 
+-- =========================
+-- UTANA (switch spellUtana)
+-- =========================
 local utanaCast = 0
 macro(200, function()
-  if not storage["conditionsButton"] or not storage["conditionsButton"].enabled then return end
-  if not storage["conditionsInterface"] or not storage["conditionsInterface"].checks then return end
-  if not storage["conditionsInterface"].checks.spellUtana then return end
+  if not storage[switchConditions] or not storage[switchConditions].enabled then return end
+
+  local cfg = storage[panelName]
+  if not cfg or not cfg.switches then return end
+  if not cfg.switches["spellUtana"] then return end
 
   if mana() < 441 then return end
   if utanaCast > 0 and (now - utanaCast < 120000) then return end
@@ -607,14 +896,25 @@ macro(200, function()
   utanaCast = now
 end)
 
-local lastExetaRes = 0
-local exetaResCooldown = 2500
+-- =========================
+-- EXETA RES (switch exetaRes) - 1 SQM
+-- =========================
+onTalk(function(name, level, mode, text, channelId, pos)
+  text = text:lower();
+  if name ~= player:getName() then return; end
+  if text == 'Exeta Res' or text == 'exeta res' then
+    exetaSlow = now + 1900
+  end
+end)
 
 macro(200, function()
-  if not storage.conditionsButton or not storage.conditionsButton.enabled then return end
-  if not storage.conditionsInterface or not storage.conditionsInterface.checks or not storage.conditionsInterface.checks.exetaRes then return end
+  if not storage[switchConditions] or not storage[switchConditions].enabled then return end
+
+  local cfg = storage[panelName]
+  if not cfg or not cfg.switches or not cfg.switches["exetaRes"] then return end
+
   if isInPz() or not g_game.isAttacking() then return end
-  if now - lastExetaRes < exetaResCooldown then return end
+  if exetaSlow and exetaSlow >= now then return; end
 
   local me = g_game.getLocalPlayer()
   local target = g_game.getAttackingCreature()
@@ -624,56 +924,48 @@ macro(200, function()
   local t = target:getPosition()
   if not p or not t or p.z ~= t.z then return end
 
-  -- só se estiver exatamente a 1 SQM
   if math.max(math.abs(p.x - t.x), math.abs(p.y - t.y)) ~= 1 then return end
 
   say("exeta res")
-  lastExetaRes = now
+  delay(1000)
 end)
 
+-- =========================
+-- EXETA AMP RES (switch exetaAmpRes) - TextEdit textAmpRes
+-- =========================
 local lastExetaAmpRes = 0
 local exetaAmpResCooldown = 6000
+
+onTalk(function(name, level, mode, text, channelId, pos)
+  text = text:lower();
+  if name ~= player:getName() then return; end
+  if text == 'Exeta Res' or text == 'exeta res' then
+    exetaSlow = now + 1900
+  end
+end)
+
 macro(200, function()
-  if not storage["conditionsButton"] or not storage["conditionsButton"].enabled then return end
-  if not storage["conditionsInterface"] or not storage["conditionsInterface"].checks then return end
-  if not storage["conditionsInterface"].checks.exetaAmpRes then return end
+  if not storage[switchConditions] or not storage[switchConditions].enabled then return end
+
+  local cfg = storage[panelName]
+  if not cfg or not cfg.switches or not cfg.switches["exetaAmpRes"] then return end
+
   if isInPz() then return end
   if not g_game.isAttacking() then return end
   if now - lastExetaAmpRes < exetaAmpResCooldown then return end
 
-  local spell = storage["conditionsInterface"].texts and storage["conditionsInterface"].texts["textAmpRes"]
-  spell = tostring(spell or "")
-  spell = spell:gsub("^%s+", ""):gsub("%s+$", "")
-
-  if spell == "" then
-    spell = "exeta amp res"
-  end
+  local spell = cfg.texts and cfg.texts["textAmpRes"]
+  spell = _trim(spell)
+  if spell == "" then spell = "exeta amp res" end
 
   say(spell)
+  lastExetaAmpRes = now
   delay(3000)
 end)
 
-local function countMonstersAround(range)
-  local me = pos()
-  if not me then return 0 end
-
-  local count = 0
-  for _, c in ipairs(getSpectators(false)) do
-    if c and c.isMonster and c:isMonster() then
-      local p = c:getPosition()
-      if p and p.z == me.z then
-        local dx = math.abs(p.x - me.x)
-        local dy = math.abs(p.y - me.y)
-        if math.max(dx, dy) <= range then
-          count = count + 1
-        end
-      end
-    end
-  end
-  return count
-end
-
-
+-- =========================
+-- EXETA LOOT (switch exetaLoot)
+-- =========================
 local lastExetaLoot = 0
 local exetaLootCooldown = 2000
 local rangeCheck = 3
@@ -683,9 +975,11 @@ local lastHadTarget = 0
 local fightGraceMs = 2000
 
 macro(200, function()
-  if not storage["conditionsButton"] or not storage["conditionsButton"].enabled then return end
-  if not storage["conditionsInterface"] or not storage["conditionsInterface"].checks then return end
-  if not storage["conditionsInterface"].checks.exetaLoot then return end
+  if not storage[switchConditions] or not storage[switchConditions].enabled then return end
+
+  local cfg = storage[panelName]
+  if not cfg or not cfg.switches or not cfg.switches["exetaLoot"] then return end
+
   if isInPz() then return end
   if now - lastExetaLoot < exetaLootCooldown then return end
 
@@ -720,13 +1014,8 @@ macro(200, function()
     say("exeta loot")
     say("exeta loot")
     say("exeta loot")
-    say("exeta loot")
-    say("exeta loot")
-    say("exeta loot")
     lastExetaLoot = now
   end
 
   lastMobsAround = mobsAround
 end)
-
-
