@@ -681,61 +681,26 @@ storage[panelName].texts    = storage[panelName].texts    or {}
 local userUturaTimer = 0
 local userBuffTimer  = 0
 
+onTalk(function(name, level, mode, text, channelId, pos)
+  text = text:lower()
+  if name ~= player:getName() then return end
+
+  -- BUFF (combo é valor único, não tabela)
+  local buffSpell = storage[panelName].combos["comboBuff"]
+  if buffSpell and text == tostring(buffSpell):lower() then
+    userBuffTimer = now + 10000
+  end
+
+  -- UTURA (text é string, não tabela)
+  local uturaSpell = storage[panelName].texts["textUturaGran"]
+  if uturaSpell and text == tostring(uturaSpell):lower() then
+    userUturaTimer = now + 60500
+  end
+end)
+
 local function _trim(s)
   return (tostring(s or ""):gsub("^%s+", ""):gsub("%s+$", ""))
 end
-
-local function _norm(s)
-  return _trim(s):lower()
-end
-
-local function getConfiguredUturaSpell()
-  local cfg = storage[panelName]
-  local t = cfg and cfg.texts and cfg.texts["textUturaGran"]
-  t = _norm(t)
-  if t == "" then t = "utura gran" end
-  return t
-end
-
-local function getConfiguredBuffSpell()
-  local cfg = storage[panelName]
-  local opt = cfg and cfg.combos and cfg.combos["comboBuff"]
-  opt = _norm(opt)
-  return opt
-end
-
--- cooldowns baseados no tempo que você já usava no seu onTalk
-local function getUturaDurationMs()
-  return 60500
-end
-
-local function getBuffDurationMs()
-  -- você usava 10500 pros utito (server-side), mantém
-  return 10500
-end
-
-onTalk(function(name, level, mode, text, channelId, pos)
-  local me = g_game.getLocalPlayer()
-  if not me then return end
-  if name ~= me:getName() then return end
-
-  local msg = _norm(text)
-  if msg == "" then return end
-
-  -- UTURA (lê do TextEdit)
-  local uturaSpell = getConfiguredUturaSpell()
-  if uturaSpell ~= "" and msg == uturaSpell then
-    userUturaTimer = now + getUturaDurationMs()
-    return
-  end
-
-  -- BUFF (lê do Combo)
-  local buffSpell = getConfiguredBuffSpell()
-  if buffSpell ~= "" and msg == buffSpell then
-    userBuffTimer = now + getBuffDurationMs()
-    return
-  end
-end)
 
 -- =========================
 -- Moving detector (pra haste)
@@ -804,24 +769,21 @@ macro(200, function()
 
   -- Buff (agora respeita o timer do onTalk)
   if sw["spellBuff"] then
-    if g_game.isAttacking() and (now > userBuffTimer) then
+    if userBuffTimer and userBuffTimer >= now then return end
+    if g_game.isAttacking() then
       local spell = _trim(combos["comboBuff"])
       if spell ~= "" then
         say(spell)
-        -- trava pequeno anti-spam enquanto espera resposta
-        userBuffTimer = now + 1000
       end
     end
   end
 
-  -- Utura (agora respeita o timer do onTalk + lê do TextEdit)
   if sw["spellUtura"] then
-    if player:getMana() >= 200 and (now > userUturaTimer) then
+    if userUturaTimer and userUturaTimer >= now then return end
+    if player:getMana() >= 200 then
       local spell = _trim(texts["textUturaGran"])
       if spell == "" then spell = "utura gran" end
       say(spell)
-      -- trava pequeno anti-spam enquanto espera resposta
-      userUturaTimer = now + 2000
     end
   end
 end)
