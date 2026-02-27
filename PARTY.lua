@@ -376,7 +376,7 @@ if not storage[panelName] then
   storage[panelName] = {
     leaderName = "Leader",
     autoPartyList = {},
-    enabled = false,
+    enabled = true,
     onMove = false,
     soulider = false,
     autoShare = false,
@@ -826,14 +826,6 @@ end
 -- =====================================================
 -- == LÓGICA COMPLETA AUTO PARTY (INTEGRADA AO PAINEL) ==
 -- =====================================================
-
--- Variáveis de controle interno (estado da sessão)
-local infoTime = 0
-local talkTime = 0
-local justForInfo = true
-local canSeeInfo = true
-local partyMembersCount = 0
-
 -- Macro Principal: Gerencia o status da Party e pede Info
 -- Variáveis de controle interno (estado da sessão)
 local infoTime = 0
@@ -849,23 +841,34 @@ local lastCloseAt = 0
 
 macro(1000, function()
   if not storage[panelName].enabled then return end
+
+  -- usa segundos (os.time) porque sua macro inteira já trabalha assim
   local now = os.time()
-  if lastCloseAt == 0 or (now - lastCloseAt) >= 3 then
-    local root = g_ui.getRootWidget()
-    if root then
-      for _, widget in ipairs(root:recursiveGetChildren()) do
-        if widget:getStyleName() == 'MessageBoxLabel' then
-          local parent = widget:getParent()
-          if parent and parent.destroy then
-            parent:destroy()
+
+  -- =========================
+  -- FECHAR PAINEIS (APENAS QUANDO TIMER ATIVO)
+  -- =========================
+  if fecharPaineis and fecharPaineis > 0 and now <= fecharPaineis then
+    if lastCloseAt == 0 or (now - lastCloseAt) >= 3 then
+      local root = g_ui.getRootWidget()
+      if root then
+        for _, widget in ipairs(root:recursiveGetChildren()) do
+          if widget:getStyleName() == 'MessageBoxLabel' then
+            local parent = widget:getParent()
+            if parent and parent.destroy then
+              parent:destroy()
+            end
+            lastCloseAt = now
+            break
           end
-          lastCloseAt = now
-          break
         end
       end
     end
   end
 
+  -- =========================
+  -- SUA LOGICA ORIGINAL (IGUAL)
+  -- =========================
   if not storage[panelName].soulider2 then
     justForInfo = true
     partyMembersCount = 0
@@ -899,6 +902,10 @@ macro(1000, function()
     else
       say("!party info")
     end
+
+    -- ativa janela de 5s pra fechar paineis após pedir info
+    fecharPaineis = now + 5
+
     lastInfoAt = now
     return
   end
@@ -910,6 +917,10 @@ macro(1000, function()
     else
       say("!party info")
     end
+
+    -- ativa janela de 5s pra fechar paineis após pedir info
+    fecharPaineis = now + 5
+
     lastInfoAt = now
     return
   end
@@ -1079,5 +1090,4 @@ macro(200, function()
     end
   end
 end)
-
 
