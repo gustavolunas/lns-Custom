@@ -535,7 +535,7 @@ local familiarSpellByVoc = {
   knight   = "utevo gran res eq",
   paladin  = "utevo gran res sac",
   sorcerer = "utevo gran res ven",
-  druid    = " utevo gran res dru",
+  druid    = "utevo gran res dru",
   monk     = "utevo gran res tio"
 }
 
@@ -549,22 +549,12 @@ macro(500, function()
   local playerObj = g_game.getLocalPlayer()
   if not playerObj then return end
 
-  local nowMs = 0
-  if g_clock and type(g_clock.millis) == "function" then
-    nowMs = g_clock.millis()
-  elseif now then
-    nowMs = now
-  end
-
-  if lastSummon > 0 and (nowMs - lastSummon < summonCooldown) then return end
-
   local vocType = getVocationType(playerObj)
   local spell = familiarSpellByVoc[vocType]
   if not spell or spell == "" then return end
 
   say(spell)
-  lastSummon = (g_clock and type(g_clock.millis) == 'function' and g_clock.millis()) or now or 0
-  delay(5000)
+  delay(10000)
 end)
 
 macro(500, function()
