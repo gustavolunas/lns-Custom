@@ -694,11 +694,8 @@ local function isPartyShield(creature)
     return true
   end
 
-  if creature.getShield then
-    local s = creature:getShield()
-    if s and s ~= 0 and s ~= 1 then
-      return true
-    end
+  if creature:isPartyMember() then
+    return true
   end
 
   return false
