@@ -158,7 +158,7 @@ local files = {
   "SWAPEQUIP",
   "WARSCRIPTS",
 
-  "CONTAINERS",
+  "CONTAINER",
   "ICONS",
 }
 
