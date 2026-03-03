@@ -6,7 +6,7 @@ storage[switchTravel] = storage[switchTravel] or { enabled = false }
 
 travelButton = setupUI([[
 Panel
-  height: 20
+  height: 17
   
   BotSwitch
     id: title
@@ -345,5 +345,6 @@ onAttackingCreatureChange(function(creature, OldCreature)
     end
 
 end)
+
 
 
