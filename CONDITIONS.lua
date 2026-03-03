@@ -17,8 +17,7 @@ end
 
 conditionsButton = setupUI([[
 Panel
-  height: 20
-  margin-top: -3
+  height: 17
   
   BotSwitch
     id: title
@@ -983,6 +982,7 @@ macro(200, function()
 
   lastMobsAround = mobsAround
 end)
+
 
 
 
