@@ -4,25 +4,24 @@ if not storage[switchCombo] then
     storage[switchCombo] = { enabled = false }
 end
 
-
 -- =========================================
 -- SUA UI
 -- =========================================
 comboButton = setupUI([[
 Panel
-  height: 20
+  height: 17
   BotSwitch
     id: title
     anchors.top: parent.top
     anchors.left: parent.left
     text-align: center
     width: 110
+    height: 17
     text: AttackBot
     font: verdana-9px
-    color: white
     image-source: /images/ui/button_rounded
+    color: white
     $on:
-      font: verdana-9px
       color: green
       image-color: gray
     $!on:
@@ -46,10 +45,8 @@ Panel
       opacity: 0.95
       color: green
 ]])
-
 comboButton:setId(switchCombo)
 comboButton.title:setOn(storage[switchCombo].enabled)
-
 
 -- clique protegido (mesmo que setEnabled falhe em algum client)
 comboButton.title.onClick = function(widget)
@@ -1086,10 +1083,10 @@ local rn_calcBtn  = W(rnUI, "calculeCooldown")
 -- =========================================================
 -- Safe IDs Andares (BotContainer) -> cfg.main.safeIdsAndares
 -- =========================================================
-local idsSafeContainer = UI.Container(function(_, items)
+local idsSafeContainer = UI.ContainerEx(function(widget, items)
   if type(items) ~= "table" then items = {} end
   cfg.main.safeIdsAndares = items
-end, true)
+end, true, idsSafePanel)
 
 idsSafeContainer:setParent(idsSafePanel)
 idsSafeContainer:fill('parent')
@@ -2372,4 +2369,3 @@ macro(100, function()
     end
   end
 end)
-
