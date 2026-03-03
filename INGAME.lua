@@ -1,29 +1,18 @@
 setDefaultTab("Tools")
-UI.Separator():setMarginTop(-0)
 
 ingameList = setupUI([[  
-UIWindow
+Panel
   id: listIngame
-  size: 200 220
-
-  Button
-    id: buttonIngame
-    anchors.top: parent.top
-    anchors.left: parent.left
-    anchors.right: parent.right
-    text: Adicionar Script
-    font: verdana-9px
-    height: 18
-    image-source: /images/ui/button_rounded
-    image-color: #828282
+  margin-top: 5
+  size: 200 200
 
   FlatPanel
     id: background
-    anchors.top: prev.bottom
+    anchors.top: parent.top
     anchors.left: parent.left
     anchors.right: parent.right
-    anchors.bottom: parent.bottom
     opacity: 1.00
+    height: 180
     margin-top: 2
 
   VerticalScrollBar
@@ -57,8 +46,22 @@ UIWindow
       layout:
         type: verticalBox
         fit-children: true
-]])
 
+  Button
+    id: buttonIngame
+    anchors.top: background.bottom
+    anchors.left: parent.left
+    anchors.right: parent.right
+    text: Ingame Script Editor
+    font: verdana-9px
+    height: 18
+    margin-top: 5
+    margin-left: -1
+    margin-right: -1
+    image-source: /images/ui/button_rounded
+    image-color: #828282
+
+]])
 local scriptsIngameEditor = ingameList.content.ingameScriptList
 
 -- =========================
