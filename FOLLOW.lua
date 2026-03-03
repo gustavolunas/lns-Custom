@@ -1,3 +1,5 @@
+setDefaultTab("Tools")
+
 local scriptsPanelName = "Scriptss"
 
 if not storage[scriptsPanelName] then
@@ -48,8 +50,7 @@ end
 
 followButton = setupUI([[
 Panel
-  height: 20
-  margin-top: -3
+  height: 17
   
   BotSwitch
     id: title
@@ -587,7 +588,7 @@ if not storage[scriptsPanelName] then
   }
 end
 
-UI.Container(function()
+UI.ContainerEx(function()
   if useROPEContainer then
     storage[scriptsPanelName].ropeIDS = useROPEContainer:getItems()
   end
@@ -596,7 +597,7 @@ if useROPEContainer then
   useROPEContainer:setItems(storage[scriptsPanelName].ropeIDS or {})
 end
 
-UI.Container(function()
+UI.ContainerEx(function()
   if useIDSContainer then
     storage[scriptsPanelName].useIDS = useIDSContainer:getItems()
   end
@@ -605,7 +606,7 @@ if useIDSContainer then
   useIDSContainer:setItems(storage[scriptsPanelName].useIDS or {})
 end
 
-UI.Container(function()
+UI.ContainerEx(function()
   if stairIDSContainer then
     storage[scriptsPanelName].stairIDS = stairIDSContainer:getItems()
   end
@@ -614,7 +615,7 @@ if stairIDSContainer then
   stairIDSContainer:setItems(storage[scriptsPanelName].stairIDS or {})
 end
 
-UI.Container(function()
+UI.ContainerEx(function()
   if buracoIDSContainer then
     storage[scriptsPanelName].buracoIDS = buracoIDSContainer:getItems()
   end
@@ -1070,7 +1071,7 @@ end
 -- =========================
 -- LEADER: fala no party
 -- =========================
-macro(1000, function()
+macro(200, function()
   if storage[scriptsPanelName].switches.souLider ~= true then return end
   if not (player:isPartyMember() or player:isPartyLeader() or player:getShield() > 2) then return end
 
@@ -1107,5 +1108,3 @@ onTalk(function(name, level, mode, text, channelId, pos)
   if g_game.getAttackingCreature() == target then return end
   g_game.attack(target)
 end)
-
-
