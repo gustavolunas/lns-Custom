@@ -30,7 +30,7 @@ Panel
     anchors.top: prev.top
     anchors.left: prev.right
     anchors.right: parent.right
-    margin-left: 3
+    margin-left: 0
     height: 17
     text: Config
     font: verdana-9px
@@ -1090,4 +1090,5 @@ macro(200, function()
     end
   end
 end)
+
 
