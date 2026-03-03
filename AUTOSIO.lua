@@ -1,4 +1,4 @@
-setDefaultTab("Main")
+setDefaultTab("LNS")
 
 local switchSio = "sioButton"
 if not storage[switchSio] then storage[switchSio] = { enabled = false } end
