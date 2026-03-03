@@ -1,3 +1,5 @@
+setDefaultTab("LNS")
+
 switchHud = "hudButton"
 
 UI.Separator()
