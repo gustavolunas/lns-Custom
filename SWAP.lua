@@ -5,8 +5,7 @@ if not storage[switchSwap] then storage[switchSwap] = { enabled = false } end
 
 swapButton = setupUI([[
 Panel
-  height: 20
-  margin-top: -3
+  height: 17
   
   BotSwitch
     id: title
@@ -1526,5 +1525,6 @@ macro(200, function()
 
   __bpInteligenteTick("amulet", idx, row, item2, item3)
 end)
+
 
 
