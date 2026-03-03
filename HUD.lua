@@ -1,6 +1,6 @@
-setDefaultTab("Main")
 switchHud = "hudButton"
 
+UI.Separator()
 if not storage[switchHud] then storage[switchHud] = { enabled = false } end
 
 hudButton = setupUI([[
@@ -91,6 +91,7 @@ function applyHudSwitches(root)
   bindHudBotSwitch(root, "targetInfo")
   bindHudBotSwitch(root, "targetHP")
   bindHudBotSwitch(root, "deadTimers")
+  bindHudBotSwitch(root, "taskTracker")
 end
 
 hudInterface = setupUI([[
@@ -243,6 +244,21 @@ UIWindow
       $!on:
         color: gray
         opacity: 0.80
+
+    BotSwitch
+      id: taskTracker
+      margin-top: 10
+      margin-right: 5
+      width: 25
+      font: terminus-10px
+      text: TASK TRACKER
+      image-source:
+      $on:
+        color: green
+        opacity: 1.00
+      $!on:
+        color: gray
+        opacity: 0.80
       
   VerticalScrollBar
     id: spellListScrollBar
@@ -375,8 +391,6 @@ end)
 -- =====================================
 -- =========== TARGET INFO =============
 -- =====================================
-
-
 local function hudMasterOn()
   return storage.hudButton and storage.hudButton.enabled == true
 end
@@ -390,6 +404,7 @@ local function targetHPOn()
   local st = storage[HUD_PANEL_STORAGE]
   return st and st.switches and st.switches.targetHP == true
 end
+
 -- =========================
 -- UI (IMAGEM + TEXTOS)
 -- =========================
@@ -801,4 +816,18 @@ macro(1000, function()
     return
   end
   rebuildList()
+end)
+
+-- =====================================
+-- =========== TASK TRACKE =============
+-- =====================================
+macro(250, function()
+  if not hudMasterOn() or not (storage[HUD_PANEL_STORAGE] and storage[HUD_PANEL_STORAGE].switches and storage[HUD_PANEL_STORAGE].switches.taskTracker) then
+    taskInterface:hide()
+    return
+  end
+  if hudMasterOn() and (storage[HUD_PANEL_STORAGE] and storage[HUD_PANEL_STORAGE].switches and storage[HUD_PANEL_STORAGE].switches.taskTracker) then
+    taskInterface:show()
+    return
+  end
 end)
