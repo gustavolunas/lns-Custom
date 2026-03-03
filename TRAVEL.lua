@@ -346,6 +346,4 @@ onAttackingCreatureChange(function(creature, OldCreature)
 
 end)
 
-UI.Separator()
-
 
