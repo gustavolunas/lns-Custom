@@ -6,8 +6,7 @@ end
 
 healingButton = setupUI([[
 Panel
-  height: 20
-  margin-top: -3
+  height: 17
   
   BotSwitch
     id: title
@@ -20,7 +19,6 @@ Panel
     color: white
     image-source: /images/ui/button_rounded
     $on:
-      font: verdana-9px
       color: green
       image-color: gray
     $!on:
@@ -483,11 +481,13 @@ mainPanel.closePanel.onClick = function()
   mainPanel:hide()
 end
 
+
+local destPanel = mainPanel.foodContainerPanel
+
 if type(storage.foodItems) ~= "table" then
   storage.foodItems = { 3607, 3585, 3592, 3600, 3601 }
 end
-local destPanel = mainPanel.foodContainerPanel
-local foodContainer = UI.Container(function(widget, items)
+local foodContainer = UI.ContainerEx(function(widget, items)
   storage.foodItems = items
 end, true)
 
@@ -918,6 +918,37 @@ bindToggleSwitch(mainPanel.offFood,    "offFood",    true)
 --  - storage.lnsHealingPanel.toggles.offHealing == true
 --  - storage[switchHealing].enabled == true
 -- =========================================
+local healCooldownUntil = 0
+
+local function isHealingSpellText(txt)
+  local cfg = storage.lnsHealingPanel
+  if not cfg or type(cfg.rows) ~= "table" then return false end
+
+  txt = tostring(txt or ""):lower()
+  if txt == "" then return false end
+
+  for i = 1, 3 do
+    local r = cfg.rows[i]
+    if r and type(r) == "table" then
+      local a = tostring(r.spell or ""):lower()
+      local b = tostring(r.spellDigit or ""):lower()
+      if (a ~= "" and txt == a) or (b ~= "" and txt == b) then
+        return true
+      end
+    end
+  end
+  return false
+end
+
+onTalk(function(name, level, mode, text, channelId, pos)
+  if not player or name ~= player:getName() then return end
+  text = tostring(text or ""):lower()
+
+  if isHealingSpellText(text) then
+    healCooldownUntil = now + 900
+  end
+end)
+
 
 macro(100, function()
   if not player then return end
@@ -982,7 +1013,9 @@ macro(100, function()
   -- tenta a melhor; se não tiver mana, faz fallback pras próximas
   for _, c in ipairs(candidates) do
     if mp >= (c.cost or 0) then
+      if now < healCooldownUntil then return end
       say(c.spell)
+      delay(200)
       return
     end
   end
@@ -996,7 +1029,7 @@ end)
 --  2) storage[switchHealing].enabled == true
 -- =========================================
 
-macro(150, function()
+macro(200, function()
   -- Condição 1: switch do painel (ONLINE/OFFLINE) das potions
   if not storage.lnsHealingPanel
      or not storage.lnsHealingPanel.toggles
