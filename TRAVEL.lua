@@ -1,3 +1,5 @@
+setDefaultTab("Tools")
+
 switchTravel = "travelButton"
 
 storage[switchTravel] = storage[switchTravel] or { enabled = false }
@@ -345,4 +347,5 @@ onAttackingCreatureChange(function(creature, OldCreature)
 end)
 
 UI.Separator()
+
 
