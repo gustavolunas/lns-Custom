@@ -2,7 +2,6 @@ setDefaultTab("LNS")
 
 switchConditions = "conditionsButton"
 local panelName = "conditionsInterface"
-warn("teste1")
 
 if not storage[panelName] then
   storage[panelName] = {
@@ -984,5 +983,6 @@ macro(200, function()
 
   lastMobsAround = mobsAround
 end)
+
 
 
