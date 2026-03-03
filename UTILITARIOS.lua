@@ -1,3 +1,5 @@
+setDefaultTab("LNS")
+
 UI.Separator()
 
 local iconUtilitys = setupUI([[
