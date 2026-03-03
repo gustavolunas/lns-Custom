@@ -1,8 +1,49 @@
+setDefaultTab("War")
+
+UI.Separator():setMarginTop(-0)
+
+LABEL2 = UI.Label("[PVP SCRIPTS]")
+LABEL2:setMarginTop(-1)
+local colors = {
+  {r = 160, g = 160, b = 160}, -- cinza
+  {r = 255, g = 255, b = 255}, -- branco
+  {r = 20,  g = 20,  b = 20},  -- preto
+}
 
 
-setDefaultTab("Main")
+local currentColor = 1
+local step = 0
+local stepsTotal = 40      -- quanto maior, mais suave
+local intervalMs = 30      -- velocidade da animação
 
--- Mensagem de Natal/Ano Novo VIP
+local function rgbToHex(r, g, b)
+  return string.format("#%02X%02X%02X", r, g, b)
+end
+
+local function animateLabelColor()
+  local from = colors[currentColor]
+  local to   = colors[currentColor % #colors + 1]
+
+  step = step + 1
+  local t = step / stepsTotal
+
+  local r = math.floor(from.r + (to.r - from.r) * t)
+  local g = math.floor(from.g + (to.g - from.g) * t)
+  local b = math.floor(from.b + (to.b - from.b) * t)
+
+  LABEL2:setColor(rgbToHex(r, g, b))
+  LABEL2:setFont("verdana-11px-rounded")
+
+  if step >= stepsTotal then
+    step = 0
+    currentColor = currentColor % #colors + 1
+  end
+end
+
+macro(intervalMs, function()
+  animateLabelColor()
+end)
+UI.Separator():setMarginTop(1)
 
 
 warning = function() end
@@ -10,7 +51,6 @@ warning = function() end
 -- ============================================================
 --  STORAGE
 -- ============================================================
-
 if not storage.pvpSystem then
     storage.pvpSystem = {}
 end
@@ -1162,7 +1202,7 @@ if hostPanel._dfContainer and hostPanel._dfContainer.destroy then
 end
 
 -- cria o container editor DENTRO do panel
-local fieldItemsContainer = UI.Container(function(_, items)
+local fieldItemsContainer = UI.ContainerEx(function(_, items)
   -- Extrair SEMPRE apenas os IDs numericos puros
   local itemIds = {}
 
@@ -2221,7 +2261,6 @@ end)
 -- Sistema funciona perfeitamente apenas com hotkey
 
 end -- Fim do bloco do sistema de Push
-
 
 
 
