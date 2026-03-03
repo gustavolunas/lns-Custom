@@ -1,9 +1,53 @@
 setDefaultTab("Tools")
 
+UI.Separator():setMarginTop(-0)
+
+LABEL = UI.Label("[LNS TOOLS]")
+LABEL:setMarginTop(-1)
+local colors = {
+  {r = 160, g = 160, b = 160}, -- cinza
+  {r = 255, g = 255, b = 255}, -- branco
+  {r = 20,  g = 20,  b = 20},  -- preto
+}
+
+
+local currentColor = 1
+local step = 0
+local stepsTotal = 40      -- quanto maior, mais suave
+local intervalMs = 50      -- velocidade da animação
+
+local function rgbToHex(r, g, b)
+  return string.format("#%02X%02X%02X", r, g, b)
+end
+
+local function animateLabelColor()
+  local from = colors[currentColor]
+  local to   = colors[currentColor % #colors + 1]
+
+  step = step + 1
+  local t = step / stepsTotal
+
+  local r = math.floor(from.r + (to.r - from.r) * t)
+  local g = math.floor(from.g + (to.g - from.g) * t)
+  local b = math.floor(from.b + (to.b - from.b) * t)
+
+  LABEL:setColor(rgbToHex(r, g, b))
+  LABEL:setFont("verdana-11px-rounded")
+
+  if step >= stepsTotal then
+    step = 0
+    currentColor = currentColor % #colors + 1
+  end
+end
+
+macro(intervalMs, function()
+  animateLabelColor()
+end)
+UI.Separator():setMarginTop(1)
+
 switchTravel = "travelButton"
 
 storage[switchTravel] = storage[switchTravel] or { enabled = false }
-
 travelButton = setupUI([[
 Panel
   height: 17
@@ -12,7 +56,6 @@ Panel
     id: title
     anchors.top: parent.top
     anchors.left: parent.left
-    anchors.right: parent.right
     text-align: center
     width: 110
     text: Fast Travel
@@ -26,6 +69,23 @@ Panel
     $!on:
       image-color: gray
       color: white
+
+  Button
+    id: settings
+    anchors.top: prev.top
+    anchors.left: prev.right
+    anchors.right: parent.right
+    margin-left: 0
+    height: 17
+    text: Config
+    font: verdana-9px
+    image-color: #363636
+    image-source: /images/ui/button_rounded
+    opacity: 1.00
+    color: white
+    $hover:
+      opacity: 0.95
+      color: green
 ]])
 travelButton:setId(switchTravel)
 travelButton.title:setOn(storage[switchTravel].enabled)
@@ -36,315 +96,1025 @@ travelButton.title.onClick = function(widget)
   storage[switchTravel].enabled = newState
 end
 
+local STKEY = "lnsFastTravel"
+storage[STKEY] = storage[STKEY] or {
+  activationMode = "", -- "", "APROXIMAÇÃO (3SQM)", "POR ATAQUE"
+  selectedNpc = "",
+  npcs = {
+    -- ["Npc Name"] = { cities = { "Carlin", "Thais" } }
+  }
+}
+local st = storage[STKEY]
+st.npcs = {
+  ["Captain Bluebear"] = { cities = { "Carlin", "Ab'dendriel", "Edron", "Venore", "Port Hope", "Liberty Bay", "Yalahar", "Roshamuul", "Krailos", "Oramond", "Rangiroa", "Svargrond", "Arcadia" } },
+  ["Captain Fearless"] = { cities = { "Thais", "Carlin", "Ab'dendriel", "Port Hope", "Edron", "Darashia", "Liberty Bay", "Svargrond", "Yalahar", "Gray Island", "Ankrahmun", "Issavi", "Arcadia", "Rangiroa" } },
+  ["Captain Greyhound"] = { cities = { "Thais", "Ab'dendriel", "Venore", "Svargrond", "Yalahar", "Rangiroa", "Arcadia", "Edron" } },
+  ["Captain Seahorse"] = { cities = { "Thais", "Carlin", "Ab'dendriel", "Venore", "Port Hope", "Ankrahmun", "Liberty Bay", "Gray Island", "Cormaya" } },
+  ["Karith"] = { cities = { "Thais", "Carlin", "Ab'dendriel", "Ankrahmun", "Darashia", "Venore", "Port Hope", "Liberty Bay", "Arcadia" } },
+  ["Captain Sinbeard"] = { cities = { "Darashia", "Venore", "Liberty Bay", "Port Hope", "Yalahar", "Edron" } },
+  ["Petros"] = { cities = { "Venore", "Port Hope", "Liberty Bay", "Ankrahmun", "Yalahar", "Issavi", "Gray Island" } },
+  ["Charles"] = { cities = { "Thais", "Darashia", "Venore", "Liberty Bay", "Ankrahmun", "Yalahar", "Edron" } },
+  ["Jack Fate"] = { cities = { "Edron", "Thais", "Venore", "Darashia", "Ankrahmun", "Yalahar", "Port Hope", "Goroma", "Liberty Bay" } },
+  ["Captain Seagull"] = { cities = { "Thais", "Carlin", "Venore", "Yalahar", "Edron", "Gray Island" } },
+  ["Scrutinon"] = { cities = { "Ab'dendriel", "Darashia", "Edron", "Venore" } },
+  ["Captain Harava"] = { cities = { "Darashia", "Krailos", "Oramond", "Venore" } },
+  ["Captain Gulliver"] = { cities = { "Thais", "Edron", "Venore", "Port Hope", "Issavi", "Krailos" } },
+  ["Captain Pelagia"] = { cities = { "Venore", "Edron", "Oramond", "Issavi", "Darashia" } },
+  ["Captain Chelop"] = { cities = { "Thais" } },
+  ["Captain Breezelda"] = { cities = { "Carlin", "Thais", "Venore", "Arcadia" } },
+  ["Captain Frank"] = { cities = { "Venore" } },
+  ["Captain Grenald"] = { cities = { "Carlin", "Thais", "Venore", "Yalahar", "Svargrond" } },
+  ["Pemaret"] = { cities = { "Edron" } },
+  ["Maris"] = { cities = { "Fenrock", "Mistrock", "Yalahar" } },
+  ["Captain Cookie"] = { cities = { "Liberty Bay" } },
+  ["Chemar"] = { cities = { "Farmine" } },
+  ["Melian"] = { cities = { "Darashia", "Femor Hills", "Svargrond", "Issavi", "Marapur", "Edron" } },
+  ["Imbul"] = { cities = { "East" } },
+  ["Lorek"] = { cities = { "Banuta", "West" } },
+  ["Buddel"] = { cities = { "Helheim", "Svargrond" } },
+  ["Gurbasch"] = { cities = { "Gnomprona" } },
+  ["Urks The Mute"] = { cities = { "Cormaya" } },
+  ["Thorgrin"] = { cities = { "Cormaya" } },
+  ["Eustacio"] = { cities = { "Shortcut" } },
+  ["Captain Jack Rat"] = { cities = { "Sail", "Safe" } },
+  ["Harlow"] = { cities = { "Yalahar", "Vengoth" } },
+}
 
-if panelNPC and not panelNPC:isDestroyed() then
-  panelNPC:destroy()
+local function trim(s)
+  return (tostring(s or ""):gsub("^%s+", ""):gsub("%s+$", ""))
 end
 
-panelNPC = setupUI([[
+local function normalizeText(s)
+  s = tostring(s or "")
+  s = s:lower()
+  s = s:gsub("%s+", " ")
+  s = trim(s)
+  return s
+end
+
+local function sameText(a, b)
+  return normalizeText(a) == normalizeText(b)
+end
+
+local function containsText(hay, needle)
+  hay = normalizeText(hay)
+  needle = normalizeText(needle)
+  if needle == "" then return true end
+  return hay:find(needle, 1, true) ~= nil
+end
+
+local function ensureNpc(name)
+  name = trim(name)
+  if name == "" then return nil end
+  st.npcs[name] = st.npcs[name] or { cities = {} }
+  st.npcs[name].cities = st.npcs[name].cities or {}
+  return name
+end
+
+local function cityExists(cities, cityName)
+  for _, c in ipairs(cities) do
+    if sameText(c, cityName) then return true end
+  end
+  return false
+end
+
+local function addCityToNpc(npcName, cityName)
+  npcName = trim(npcName)
+  cityName = trim(cityName)
+  if npcName == "" or cityName == "" then return false end
+  if not st.npcs[npcName] then return false end
+  local cities = st.npcs[npcName].cities
+  if cityExists(cities, cityName) then return false end
+  table.insert(cities, cityName)
+  return true
+end
+
+
+travelInterface = setupUI([=[
 UIWindow
-  id: panelNPC
-  size: 380 250
-  border: 1 black
+  id: mainPanel
+  size: 370 310
   anchors.centerIn: parent
   margin-top: -60
+  opacity: 1.00
 
   Panel
     id: background
-    anchors.top: parent.top
-    anchors.left: parent.left
-    anchors.right: parent.right
-    anchors.bottom: parent.bottom
-    background-color: black
-    opacity: 0.70
+    anchors.fill: parent
+    background-color: #0b0b0b
+    opacity: 0.88
 
   Panel
-    id: topPanel
+    id: topBar
     anchors.top: parent.top
     anchors.left: parent.left
     anchors.right: parent.right
-    size: 120 30
-    text-align: center
-    !text: tr('LNS Custom | Fast Travel')
+    height: 30
+    background-color: #111111
+    opacity: 1.00
+    border: 1 #1f1f1f
+
+  Label
+    id: titleLabel
+    anchors.centerIn: topBar
+    text: LNS Custom | Fast Travel
+    text-auto-resize: true
     color: orange
-    margin-left: 0
-    margin-right: 0
-    background-color: black
-    $hover:
-      image-color: gray
+    font: verdana-11px-rounded
 
   UIButton
     id: closePanel
-    anchors.top: topPanel.top
-    anchors.right: parent.right
-    size: 18 18
-    margin-top: 6
-    margin-right: 10
-    background-color: orange
+    anchors.right: topBar.right
+    anchors.verticalCenter: topBar.verticalCenter
+    size: 20 20
+    margin-right: 8
     text: X
+    background-color: orange
     color: white
     opacity: 1.00
     $hover:
       color: black
-      opacity: 0.80
+      opacity: 0.85
 
-  FlatPanel
-    id: labelMSGNPC
+  Panel
+    id: iconPanel
+    anchors.top: parent.top
+    anchors.left: parent.left
+    size: 60 60
+    margin-top: -19
+    margin-left: -15
+
+  TextEdit
+    id: pesquisarNPC
     anchors.top: prev.bottom
     anchors.left: parent.left
-    anchors.right: parent.right
-    margin-top: 18
-    margin-left: 5
-    margin-right: 5
-    height: 70
-    image-color: #363636
-    layout: verticalBox
+    width: 170
+    margin-left: 10
+    color: yellow
+    image-color: #2f2f2f
+    font: verdana-9px
+    placeholder: PESQUISAR POR NPC
+    placeholder-font: verdana-9px
 
-  FlatPanel
-    id: botoesdeAcao
+  TextList
+    id: panelMain
     anchors.top: prev.bottom
-    anchors.left: parent.left
-    anchors.right: parent.right
-    anchors.bottom: parent.bottom
-    margin-top: 6
-    margin-left: 5
-    margin-bottom: 6
-    margin-right: 5
+    anchors.right: prev.right
+    anchors.left: prev.left
+    margin-right: 10
+    margin-top: 2
+    height: 180
+    image-color: gray
+    opacity: 0.95
+    border: 1 black
+    vertical-scrollbar: panelMainScroll
+
+  VerticalScrollBar
+    id: panelMainScroll
+    anchors.top: panelMain.top
+    anchors.bottom: panelMain.bottom
+    anchors.left: panelMain.right
+    width: 13
+    margin-top: 1
+    margin-bottom: 1
+    image-color: #2f2f2f
+    step: 18
+    pixels-scroll: true
+
+  TextEdit
+    id: inserirNpcName
+    anchors.top: panelMain.bottom
+    anchors.left: panelMain.left
+    width: 140
+    margin-top: 2
+    color: yellow
+    image-color: #2f2f2f
+    font: verdana-9px
+    placeholder: INSERT NAME NPC!
+    placeholder-font: verdana-9px
+  
+  Button
+    id: buttonAdd
+    anchors.top: prev.top
+    anchors.right: panelMainScroll.right
+    anchors.left: prev.right
+    margin-left: 2
+    text: +
+    font: sans-bold-16px
+    image-source: /images/ui/button_rounded
     image-color: #363636
-    layout: verticalBox
-]], g_ui.getRootWidget())
 
-panelNPC:hide()
+  VerticalSeparator
+    id: vertsep
+    anchors.top: pesquisarNPC.top
+    anchors.left: pesquisarNPC.right
+    margin-left: 5
+    anchors.bottom: buttonAdd.bottom
 
-panelNPC.closePanel.onClick = function()
-  panelNPC:hide()
+  Panel
+    id: panelCity
+    anchors.top: prev.top
+    anchors.left: prev.right
+    width: 170
+    height: 22
+    margin-left: 5
+    color: yellow
+    text: CONFIG CITYS TRAVEL
+    font: verdana-9px
+    background-color: black
+    border: 1 #1f1f1f
+    color: gray
+
+  TextList
+    id: configLista
+    anchors.top: prev.bottom
+    anchors.right: prev.right
+    anchors.left: prev.left
+    margin-top: 2
+    margin-right: 10
+    height: 180
+    image-color: gray
+    opacity: 0.95
+    border: 1 black
+    vertical-scrollbar: ConfigListaScroll
+
+  VerticalScrollBar
+    id: ConfigListaScroll
+    anchors.top: configLista.top
+    anchors.bottom: configLista.bottom
+    anchors.left: configLista.right
+    width: 13
+    margin-top: 1
+    margin-bottom: 1
+    image-color: #2f2f2f
+    step: 18
+    pixels-scroll: true
+
+  TextEdit
+    id: inserirCityName
+    anchors.top: configLista.bottom
+    anchors.left: configLista.left
+    width: 140
+    margin-top: 2
+    color: yellow
+    image-color: #2f2f2f
+    font: verdana-9px
+    placeholder: INSERT CITY NAME
+    placeholder-font: verdana-9px
+  
+  Button
+    id: buttonCity
+    anchors.top: prev.top
+    anchors.right: ConfigListaScroll.right
+    anchors.left: prev.right
+    margin-left: 2
+    text: +
+    font: sans-bold-16px
+    image-source: /images/ui/button_rounded
+    image-color: #363636
+
+  Panel
+    id: panelTravelON
+    anchors.top: panelMain.bottom
+    anchors.left: panelMain.left
+    anchors.right: buttonCity.right
+    width: 180
+    height: 25
+    margin-top: 30
+    font: verdana-9px
+    background-color: black
+    border: 1 #1f1f1f
+
+    Label
+      id: labelTravelON
+      anchors.left: parent.left
+      anchors.top: parent.top
+      margin-top: 6
+      margin-left: 5
+      text: COMO ATIVAR O FAST-TRAVEL:
+      text-auto-resize: true
+      font: verdana-9px
+      color: gray
+
+  ComboBox
+    id: comoAtivarTravel
+    anchors.top: panelTravelON.top
+    anchors.right: panelTravelON.right
+    margin-right: 6
+    margin-top: 3
+    width: 170
+    height: 19
+    image-color: #2f2f2f
+    font: verdana-9px
+
+]=], g_ui.getRootWidget())
+travelInterface:hide();
+
+travelButton.settings.onClick = function()
+  travelInterface:show()
 end
 
--- label interno p/ msg do NPC
-if panelNPC.labelMSGNPC and not panelNPC.labelMSGNPC.msg then
-  local lbl = g_ui.createWidget("Label", panelNPC.labelMSGNPC)
-  lbl:setId("msg")
-  lbl:setText("")
-  lbl:setTextWrap(true)
-  lbl:setColor("white")
-  lbl:setFont("verdana-11px-rounded")
-  lbl:setMarginLeft(6)
-  lbl:setMarginTop(6)
-  lbl:setHeight(60)
+local npcRowTemplate = [[
+UIWidget
+  id: root
+  height: 18
+  focusable: true
+  background-color: alpha
+  opacity: 1.00
+
+  $hover:
+    background-color: #2F2F2F
+    opacity: 0.75
+
+  $focus:
+    background-color: #404040
+    opacity: 0.90
+
+  Label
+    id: npcName
+    anchors.left: parent.left
+    anchors.verticalCenter: parent.verticalCenter
+    margin-left: 6
+    font: verdana-9px
+    color: white
+    text: ""
+
+  Button
+    id: remove
+    anchors.right: parent.right
+    anchors.verticalCenter: parent.verticalCenter
+    width: 16
+    height: 16
+    margin-right: 2
+    text: X
+    color: #FF4040
+    image-color: #363636
+    image-source: /images/ui/button_rounded
+]]
+
+local cityRowTemplate = [[
+UIWidget
+  id: root
+  height: 18
+  focusable: false
+  background-color: alpha
+  opacity: 1.00
+
+  $hover:
+    background-color: #2F2F2F
+    opacity: 0.75
+
+  Label
+    id: cityName
+    anchors.left: parent.left
+    anchors.verticalCenter: parent.verticalCenter
+    margin-left: 6
+    font: verdana-9px
+    color: white
+    text: ""
+
+  Button
+    id: remove
+    anchors.right: parent.right
+    anchors.verticalCenter: parent.verticalCenter
+    width: 16
+    height: 16
+    margin-right: 2
+    text: X
+    color: #FF4040
+    image-color: #363636
+    image-source: /images/ui/button_rounded
+]]
+
+-- =========================
+-- UI STATE
+-- =========================
+local npcRows = {}
+local cityRows = {}
+
+local function sortNpcNames()
+  local names = {}
+  for npcName, _ in pairs(st.npcs) do
+    table.insert(names, npcName)
+  end
+  table.sort(names, function(a, b)
+    return normalizeText(a) < normalizeText(b)
+  end)
+  return names
+end
+
+local function refreshCitiesForSelectedNpc()
+  local list = travelInterface.configLista
+  if not list then return end
+
+  if list.destroyChildren then list:destroyChildren() end
+  cityRows = {}
+
+  local npcName = trim(st.selectedNpc or "")
+  if npcName == "" or not st.npcs[npcName] then return end
+
+  local cities = st.npcs[npcName].cities or {}
+
+  table.sort(cities, function(a, b)
+    return normalizeText(a) < normalizeText(b)
+  end)
+
+  for index, cityName in ipairs(cities) do
+    local row = g_ui.loadUIFromString(cityRowTemplate, list)
+    row.cityName:setText(cityName)
+
+    row.remove.onClick = function()
+      local npc = st.npcs[npcName]
+      if not npc or not npc.cities then return end
+
+      for i = #npc.cities, 1, -1 do
+        if sameText(npc.cities[i], cityName) then
+          table.remove(npc.cities, i)
+        end
+      end
+
+      refreshCitiesForSelectedNpc()
+    end
+
+    table.insert(cityRows, {
+      root = row,
+      nameLabel = row.cityName,
+      removeBtn = row.remove
+    })
+  end
+end
+
+local function selectNpc(npcName)
+  npcName = trim(npcName)
+  if npcName == "" then
+    st.selectedNpc = ""
+    refreshCitiesForSelectedNpc()
+    return
+  end
+  if not st.npcs[npcName] then return end
+
+  st.selectedNpc = npcName
+
+  refreshCitiesForSelectedNpc()
+
+  for name, pack in pairs(npcRows) do
+    if pack and pack.root then
+      if name == npcName then
+        pack.root:focus()
+      end
+    end
+  end
+end
+
+local function removeNpc(npcName)
+  npcName = trim(npcName)
+  if npcName == "" then return end
+
+  if st.npcs[npcName] then
+    st.npcs[npcName] = nil
+  end
+
+  if sameText(st.selectedNpc, npcName) then
+    st.selectedNpc = ""
+  end
+
+  local currentFilter = ""
+  if travelInterface.pesquisarNPC and travelInterface.pesquisarNPC.getText then
+    currentFilter = travelInterface.pesquisarNPC:getText() or ""
+  end
+
+  local function refreshNpcList() end -- forward
 end
 
 -- =========================
--- NPC.talk (padrão)
+-- CLICK BIND (robusto)
 -- =========================
-NPC = NPC or {}
-NPC.talk = function(text)
-  if g_game.getClientVersion and g_game.getClientVersion() >= 810 then
-    g_game.talkChannel(11, 0, text)
-  else
-    say(text)
+local function bindNpcRowClick(row, npcName)
+  row.onMouseRelease = function(widget, mousePos, button)
+    if button ~= MouseLeftButton then return end
+    selectNpc(npcName)
+  end
+
+  if row.npcName then
+    row.npcName.onMouseRelease = function(widget, mousePos, button)
+      if button ~= MouseLeftButton then return end
+      selectNpc(npcName)
+    end
+  end
+
+  row.onClick = function()
+    selectNpc(npcName)
   end
 end
 
 -- =========================
--- HELPERS
+-- FILTER NPC LIST
 -- =========================
-local function trim(s) return (s:gsub("^%s+", ""):gsub("%s+$", "")) end
-
-local function myPos()
-  local p = g_game.getLocalPlayer()
-  if p and p.getPosition then return p:getPosition() end
-  return nil
+local function matchesNpc(npcName, q)
+  if q == "" then return true end
+  return containsText(npcName, q)
 end
 
-local function dist(a, b)
+local function filterNpcRows(query)
+  local q = normalizeText(query)
+  for npcName, pack in pairs(npcRows) do
+    if pack and pack.root then
+      if matchesNpc(npcName, q) then pack.root:show() else pack.root:hide() end
+    end
+  end
+end
+
+-- =========================
+-- REFRESH NPC LIST (full rebuild)
+-- =========================
+local function refreshNpcList()
+  local list = travelInterface.panelMain
+  if not list then return end
+
+  if list.destroyChildren then list:destroyChildren() end
+  npcRows = {}
+
+  local names = sortNpcNames()
+  for _, npcName in ipairs(names) do
+    local row = g_ui.loadUIFromString(npcRowTemplate, list)
+    row.npcName:setText(npcName)
+
+    npcRows[npcName] = {
+      root = row,
+      nameLabel = row.npcName,
+      removeBtn = row.remove
+    }
+
+    bindNpcRowClick(row, npcName)
+
+    row.remove.onClick = function()
+      if st.npcs[npcName] then st.npcs[npcName] = nil end
+      if sameText(st.selectedNpc, npcName) then st.selectedNpc = "" end
+
+      local currentFilter = travelInterface.pesquisarNPC and travelInterface.pesquisarNPC:getText() or ""
+      refreshNpcList()
+      filterNpcRows(currentFilter or "")
+      refreshCitiesForSelectedNpc()
+    end
+  end
+
+  if st.selectedNpc ~= "" and npcRows[st.selectedNpc] and npcRows[st.selectedNpc].root then
+    npcRows[st.selectedNpc].root:focus()
+  end
+end
+
+-- =========================
+-- BUTTONS / EVENTS
+-- =========================
+travelInterface.closePanel.onClick = function()
+  travelInterface:hide()
+end
+
+local TRAVEL_MODES = { "", "APROXIMACAO (3SQM)", "POR ATAQUE" }
+
+travelInterface.comoAtivarTravel:clearOptions()
+for _, opt in ipairs(TRAVEL_MODES) do
+  travelInterface.comoAtivarTravel:addOption(opt)
+end
+
+local function applyComboFromStorage()
+  local mode = tostring(st.activationMode or "")
+  local idx = 1
+  for i, opt in ipairs(TRAVEL_MODES) do
+    if opt == mode then
+      idx = i
+      break
+    end
+  end
+  if travelInterface.comoAtivarTravel.setCurrentOption then
+    travelInterface.comoAtivarTravel:setCurrentOption(idx)
+  end
+  if travelInterface.comoAtivarTravel.setText then
+    travelInterface.comoAtivarTravel:setText(TRAVEL_MODES[idx])
+  end
+end
+
+local function saveComboToStorage(text)
+  st.activationMode = tostring(text or "")
+end
+
+travelInterface.comoAtivarTravel.onOptionChange = function(_, text)
+  saveComboToStorage(text)
+end
+travelInterface.comoAtivarTravel.onSelectionChange = function(_, text)
+  saveComboToStorage(text)
+end
+travelInterface.comoAtivarTravel.onTextChange = function(_, text)
+  if text ~= nil then saveComboToStorage(text) end
+end
+
+applyComboFromStorage()
+
+travelInterface.pesquisarNPC.onTextChange = function(_, text)
+  filterNpcRows(text or "")
+end
+
+travelInterface.buttonAdd.onClick = function()
+  local name = travelInterface.inserirNpcName:getText() or ""
+  name = trim(name)
+  if name == "" then return end
+
+  ensureNpc(name)
+  travelInterface.inserirNpcName:setText("")
+  refreshNpcList()
+
+  local q = travelInterface.pesquisarNPC:getText() or ""
+  filterNpcRows(q)
+
+  selectNpc(name)
+end
+
+-- Add City for selected NPC
+travelInterface.buttonCity.onClick = function()
+  local npcName = trim(st.selectedNpc or "")
+  if npcName == "" then return end
+
+  local cityName = travelInterface.inserirCityName:getText() or ""
+  cityName = trim(cityName)
+  if cityName == "" then return end
+
+  local ok = addCityToNpc(npcName, cityName)
+  if ok then
+    travelInterface.inserirCityName:setText("")
+    refreshCitiesForSelectedNpc()
+  end
+end
+
+-- =========================
+-- INIT
+-- =========================
+refreshNpcList()
+refreshCitiesForSelectedNpc()
+
+do
+  local q = travelInterface.pesquisarNPC and travelInterface.pesquisarNPC:getText() or ""
+  filterNpcRows(q or "")
+end
+
+-- =========================
+-- UTILS
+-- =========================
+local function trim(s)
+  return (tostring(s or ""):gsub("^%s+", ""):gsub("%s+$", ""))
+end
+
+local function normalizeText(s)
+  s = tostring(s or ""):lower()
+  s = s:gsub("%s+", " ")
+  return trim(s)
+end
+
+local function nowMs()
+  if g_clock and g_clock.millis then return g_clock.millis() end
+  return os.time() * 1000
+end
+
+local function isApproxMode()
+  local m = normalizeText(st.activationMode or "")
+  return (m == normalizeText("APROXIMAÇÃO (3SQM)")) or (m == normalizeText("APROXIMACAO (3SQM)"))
+end
+
+local function distSqm(a, b)
   if not a or not b then return 999 end
   if a.z ~= b.z then return 999 end
   return math.max(math.abs(a.x - b.x), math.abs(a.y - b.y))
 end
 
-local function setNpcText(text)
-  if panelNPC and panelNPC.labelMSGNPC and panelNPC.labelMSGNPC.msg then
-    panelNPC.labelMSGNPC.msg:setText(text or "")
-  end
+local function sortCities(cities)
+  table.sort(cities, function(a, b)
+    return normalizeText(a) < normalizeText(b)
+  end)
 end
 
--- =========================
--- GRID 3 COLUNAS
--- =========================
-local GRID_COLS = 3
-local gridRows = {}
-local gridIndex = 0
-
-local function ensureRow(row)
-  if gridRows[row] and not gridRows[row]:isDestroyed() then
-    return gridRows[row]
-  end
-
-  local p = setupUI([[
-Panel
-  height: 20
-  margin-left: 4
-  margin-top: 5
-  layout:
-    type: horizontalBox
-]], panelNPC.botoesdeAcao)
-
-  gridRows[row] = p
-  return p
-end
-
-local function clearButtons()
-  gridRows = {}
-  gridIndex = 0
-  for _, c in pairs(panelNPC.botoesdeAcao:getChildren()) do
-    c:destroy()
-  end
-end
-
-local function sanitizeCityText(city)
-  city = tostring(city or "")
-  city = city:gsub("[{}]", "")
-  city = city:gsub("%s+", " ")
-  city = trim(city)
-  return city
-end
-
-local function baseWidth()
-  local w = panelNPC.botoesdeAcao:getWidth() or 360
-  return (w - 12)
-end
-
-local function buttonWidth()
-  return math.floor(baseWidth() / GRID_COLS)
-end
-
--- =========================
--- BOTÃO (setupUI com text-align center)
--- =========================
-local function addCityButton(city)
-  city = sanitizeCityText(city)
-  if city == "" then return end
-
-  gridIndex = gridIndex + 1
-  local row = math.floor((gridIndex - 1) / GRID_COLS) + 1
-  local rowPanel = ensureRow(row)
-  if not rowPanel then return end
-
-  local btn = setupUI([[
-Button
-  height: 20
-  text-align: center
-  image-source: /images/ui/button_rounded
-  image-color: #363636
-  color: white
-  font: verdana-11px-rounded
-]], rowPanel)
-
-  btn:setText(city)
-  btn:setWidth(buttonWidth()) -- ✅ sempre padrão, inclusive última linha
-
-  btn.onClick = function()
-    schedule(120, function() NPC.talk(city) end)
-    schedule(320, function() NPC.talk("yes") end)
-  end
-end
-
--- =========================
--- EXTRAÇÃO DE CIDADES
--- =========================
-local function extractCities(text)
-  if type(text) ~= "string" then return nil end
-
-  local list =
-      text:match("[Ww]here do you want to go%??%s*[Tt]o%s+(.+)%?") or
-      text:match("[Ww]here do you want to go%s*[-:%–]%s*(.+)%?") or
-      text:match("[Ww]here do you want to go%s*[-:%–]%s*(.+)$") or
-      text:match("[Ii] can take you to%s+(.+)%.*") or
-      text:match("[Yy]ou can travel to%s+(.+)%.*") or
-      text:match("[Pp]assages? to%s+(.+)%.*")
-
-  if not list then return nil end
-
-  list = list:gsub("%s+and%s+", ", ")
-  list = list:gsub("%s+or%s+", ", ")
-  list = list:gsub("%s+e%s+", ", ")
-
-  local out, seen = {}, {}
-  for part in list:gmatch("([^,]+)") do
-    local city = tostring(part):gsub("[%?%.!]+$", "")
-    city = sanitizeCityText(city)
-    if city:lower() == "kick" then city = "" end
-
-    if city ~= "" and not seen[city:lower()] then
-      seen[city:lower()] = true
-      table.insert(out, city)
+local function findNpcOnScreenByName(name)
+  name = trim(name)
+  if name == "" then return nil end
+  local specs = getSpectators() or {}
+  for _, cr in ipairs(specs) do
+    if cr and cr.getName and cr:isNpc() and cr.getPosition then
+      if cr:getName() == name then
+        return cr
+      end
     end
   end
-
-  return (#out > 0) and out or nil
+  return nil
 end
+
+local function isNpcNear(name, maxDist)
+  local me = g_game.getLocalPlayer()
+  if not me then return false end
+  local myPos = me:getPosition()
+  if not myPos then return false end
+
+  local npc = findNpcOnScreenByName(name)
+  if not npc then return false end
+
+  local npcPos = npc:getPosition()
+  return distSqm(myPos, npcPos) <= (maxDist or 3)
+end
+
+-- =========================
+-- UI
+-- =========================
+local travelUII = setupUI([[
+UIWindow
+  id: travelUII
+  size: 300 70
+  opacity: 0.85
+  anchors.left: parent.left
+  anchors.top: parent.top
+  margin-left: 800
+  margin-top: 150
+
+  Panel
+    id: background
+    anchors.fill: parent
+    background-color: #0b0b0b
+    opacity: 0.88
+
+  Panel
+    id: topBar
+    anchors.top: parent.top
+    anchors.left: parent.left
+    anchors.right: parent.right
+    height: 25
+    background-color: #111111
+    opacity: 1.00
+    border: 1 #1f1f1f
+
+  Label
+    id: titleLabel
+    anchors.centerIn: topBar
+    text: [LNS] Select City Travel
+    text-auto-resize: true
+    color: orange
+    font: verdana-11px-rounded
+
+  Panel
+    id: panelTravelUII
+    anchors.top: prev.bottom
+    anchors.left: parent.left
+    anchors.right: parent.right
+    width: 180
+    height: 35
+    margin-top: 10
+    margin-left: 10
+    margin-right: 10
+    font: verdana-9px
+    background-color: black
+    border: 1 #1f1f1f
+
+    Label
+      id: labelTraveUII
+      anchors.left: parent.left
+      anchors.right: parent.right
+      anchors.top: parent.top
+      margin-top: 12
+      margin-left: 10
+      margin-right: 10
+      text: SELECIONE A CITY:
+      text-auto-resize: true
+      font: verdana-9px
+      color: gray
+
+  ComboBox
+    id: TravelOptions
+    anchors.top: panelTravelUII.top
+    anchors.right: panelTravelUII.right
+    margin-right: 6
+    margin-top: 3
+    width: 160
+    height: 29
+    image-color: #2f2f2f
+    color: gray
+    font: verdana-11px-rounded
+]], g_ui.getRootWidget())
+
+travelUII:hide()
 
 -- =========================
 -- STATE
 -- =========================
-local lastNpcText = ""
-local lastNpcPos = nil
+local uiNpcName = ""          -- NPC atual do painel
+local lastCitiesKey = ""      -- evita repopular toda hora
+local travelCooldownMs = 1200 -- anti-spam geral
+local lastTravelAt = 0
+local lockTravel = false
 
--- =========================
--- HOOK: onTalk
--- =========================
-onTalk(function(name, level, mode, text, channelId, creaturePos)
-  if not storage[switchTravel].enabled then return end
-  if not panelNPC or panelNPC:isDestroyed() then return end
-  if type(name) ~= "string" or type(text) ~= "string" then return end
-  if not creaturePos then return end
+local function buildCitiesKey(cities)
+  if not cities then return "" end
+  local tmp = {}
+  for i = 1, #cities do tmp[#tmp + 1] = normalizeText(cities[i]) end
+  table.sort(tmp)
+  return table.concat(tmp, "|")
+end
 
-  local cities = extractCities(text)
-  if not cities then return end
+local function fillCitiesCombo(cities)
+  travelUII.TravelOptions:clearOptions()
 
-  local me = myPos()
-  if dist(me, creaturePos) > 2 then return end
+  travelUII.TravelOptions:addOption("")
 
-  if text == lastNpcText then return end
-  lastNpcText = text
-  lastNpcPos = creaturePos
-
-  clearButtons()
-  local cleanLabel = (name .. ": " .. text):gsub("[{}]", "")
-  setNpcText(cleanLabel)
-
-  for _, city in ipairs(cities) do
-    addCityButton(city)
-  end
-
-  panelNPC:show()
-end)
-
--- =========================
--- Auto-hide ao afastar
--- =========================
-macro(200, function()
-  if not panelNPC or panelNPC:isDestroyed() then return end
-  if not panelNPC:isVisible() then return end
-  if not lastNpcPos then return end
-
-  local me = myPos()
-  if dist(me, lastNpcPos) > 4 then
-    lastNpcText = ""
-    lastNpcPos = nil
-    setNpcText("")
-    clearButtons()
-    panelNPC:hide()
-  end
-end)
-
-onAttackingCreatureChange(function(creature, OldCreature)
-    if creature and creature:isNpc() and distanceFromPlayer(creature:getPosition()) <= 3 then
-        CaveBot.Conversation("hi", "sail")
-        CaveBot.Conversation("hi", "trade")
+  if cities and #cities > 0 then
+    for i = 1, #cities do
+      travelUII.TravelOptions:addOption(cities[i])
     end
+  end
 
+  if travelUII.TravelOptions.setCurrentOption then
+    travelUII.TravelOptions:setCurrentOption(1)
+  end
+  if travelUII.TravelOptions.setText then
+    travelUII.TravelOptions:setText("")
+  end
+end
+
+local function showTravelUIForNpc(npcName)
+  npcName = trim(npcName)
+  if npcName == "" or not st.npcs[npcName] then return end
+
+  local cities = st.npcs[npcName].cities or {}
+  sortCities(cities)
+
+  local key = buildCitiesKey(cities)
+  if uiNpcName ~= npcName or lastCitiesKey ~= key then
+    fillCitiesCombo(cities)
+    uiNpcName = npcName
+    lastCitiesKey = key
+  end
+
+  if not travelUII:isVisible() then
+    travelUII:show()
+  end
+end
+
+local function hideTravelUI()
+  if travelUII:isVisible() then travelUII:hide() end
+  uiNpcName = ""
+  lastCitiesKey = ""
+end
+
+-- =========================
+-- TRAVEL SEQUENCE
+-- =========================
+local function doNpcTravel(npcName, city)
+  npcName = trim(npcName)
+  city = trim(city)
+
+  if npcName == "" or city == "" then return end
+  if lockTravel then return end
+
+  local t = nowMs()
+  if (t - lastTravelAt) < travelCooldownMs then return end
+
+  if not isNpcNear(npcName, 3) then return end
+
+  lockTravel = true
+  lastTravelAt = t
+
+  local nameCopy = npcName
+  local cityCopy = city
+
+  NPC.say("hi")
+
+  schedule(250, function()
+    if not isNpcNear(nameCopy, 3) then lockTravel = false return end
+    NPC.say(cityCopy)
+  end)
+
+  schedule(500, function()
+    if not isNpcNear(nameCopy, 3) then lockTravel = false return end
+    NPC.say("yes")
+  end)
+
+  schedule(500, function()
+    if not isNpcNear(nameCopy, 3) then lockTravel = false return end
+    NPC.say("yes")
+    lockTravel = false
+  end)
+end
+
+local function onCitySelected(_, text)
+  local city = trim(text or "")
+  if city == "" then return end
+  if uiNpcName == "" then return end
+  doNpcTravel(uiNpcName, city)
+end
+
+travelUII.TravelOptions.onOptionChange = onCitySelected
+travelUII.TravelOptions.onSelectionChange = onCitySelected
+travelUII.TravelOptions.onTextChange = onCitySelected
+
+macro(200, function()
+  if not storage[switchTravel].enabled then hideTravelUI() return; end
+  if not isApproxMode() then
+    return
+  end
+
+  local me = g_game.getLocalPlayer()
+  if not me then hideTravelUI() return end
+  local myPos = me:getPosition()
+  if not myPos then hideTravelUI() return end
+
+  local bestName = ""
+  local bestDist = 999
+
+  local specs = getSpectators() or {}
+  for _, cr in ipairs(specs) do
+    if cr and cr.getName and cr.getPosition and cr:isNpc() then
+      local name = cr:getName()
+      if name and st.npcs[name] then
+        local d = distSqm(myPos, cr:getPosition())
+        if d <= 3 and d < bestDist then
+          bestDist = d
+          bestName = name
+        end
+      end
+    end
+  end
+
+  if bestName ~= "" then
+    showTravelUIForNpc(bestName)
+  else
+    hideTravelUI()
+  end
 end)
 
+--================
+--ATTACKMODE
+--================
+local function isAttackMode()
+  return tostring(st.activationMode or "") == "POR ATAQUE"
+end
 
+-- estado do "último NPC clicado pra viajar"
+local attackTravelNpc = ""
+local attackTravelSeenAt = 0
+local ATTACK_CLICK_WINDOW_MS = 1200 -- janela pra considerar "um clique"
+local UI_KEEP_ALIVE_MS = 60000      -- segurança (fecha depois de 60s se quiser)
 
+local function nowMs()
+  if g_clock and g_clock.millis then return g_clock.millis() end
+  return os.time() * 1000
+end
+
+local function findNpcByNameOnScreen(name)
+  local specs = getSpectators() or {}
+  for _, cr in ipairs(specs) do
+    if cr and cr:isNpc() and cr.getName and cr.getPosition then
+      if (cr:getName() or "") == name then
+        return cr
+      end
+    end
+  end
+  return nil
+end
+
+onAttackingCreatureChange(function(creature, oldCreature)
+  if not storage[switchTravel].enabled then hideTravelUI() return; end
+  if not isAttackMode() then return end
+
+  if not creature or not creature:isNpc() then return end
+
+  local npcName = creature:getName() or ""
+  if npcName == "" then return end
+  if not st.npcs or not st.npcs[npcName] then return end
+
+  local pos = creature:getPosition()
+  if not pos or distanceFromPlayer(pos) > 3 then return end
+
+  attackTravelNpc = npcName
+  attackTravelSeenAt = nowMs()
+  showTravelUIForNpc(npcName)
+end)
+
+macro(200, function()
+  if not storage[switchTravel].enabled then hideTravelUI() return; end
+  if not isAttackMode() then return end
+
+  if attackTravelNpc == "" then return end
+
+  if (nowMs() - attackTravelSeenAt) > UI_KEEP_ALIVE_MS then
+    attackTravelNpc = ""
+    hideTravelUI()
+    return
+  end
+
+  local npc = findNpcByNameOnScreen(attackTravelNpc)
+  if not npc then
+    attackTravelNpc = ""
+    hideTravelUI()
+    return
+  end
+
+  local pos = npc:getPosition()
+  if not pos or distanceFromPlayer(pos) > 3 then
+    attackTravelNpc = ""
+    hideTravelUI()
+    return
+  end
+end)
