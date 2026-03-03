@@ -1,3 +1,5 @@
+setDefaultTab("War")
+
 local switchSwapEquips = "buttonSwapEquips"
 
 if not storage[switchSwapEquips] then
