@@ -1,5 +1,4 @@
-local moveDist = UI.Separator()
-warn("open doors ajustado")
+UI.Separator()
 
 local iconUtilitys = setupUI([[
 Panel
@@ -54,7 +53,7 @@ end
 utilityInterface = setupUI([[
 UIWindow
   id: mainPanel
-  size: 400 310
+  size: 400 360
   border: 1 black
   anchors.centerIn: parent
   margin-top: -60
@@ -76,12 +75,13 @@ UIWindow
     size: 120 30
     text-align: center
     !text: tr('LNS Custom | Utilitys Setup')
+    font: verdana-11px-rounded
     color: orange
     margin-left: 0
     margin-right: 0
-    background-color: black
-    $hover:
-      image-color: gray
+    background-color: #111111
+    opacity: 1.00
+    border: 1 #1f1f1f
   
   Panel
     id: iconPanel
@@ -106,7 +106,7 @@ UIWindow
       color: black
       opacity: 0.80
 
-  ScrollablePanel
+  Panel
     id: content
     anchors.top: prev.bottom
     anchors.left: parent.left
@@ -116,16 +116,17 @@ UIWindow
     margin-bottom: 5
     margin-top: 12
     margin-right: 10
-    background-color: #363636
+    background-color: #1b1b1b
+    border: 1 #3b2a10
+    opacity: 0.95
 
-    FlatPanel
+    Panel
       id: leftMacros
       anchors.top: parent.top
       anchors.left: parent.left
-      height: 271
+      height: 321
       width: 190
       margin-top: -1
-      image-color: #363636
       layout: verticalBox
       padding: 5
 
@@ -135,17 +136,17 @@ UIWindow
       anchors.top: parent.top
       anchors.bottom: parent.bottom
 
-    FlatPanel
+    Panel
       id: rightMacros
       anchors.top: parent.top
       anchors.left: leftMacros.right
-      height: 270
+      height: 320
       margin-left: 1
       width: 190
-      image-color: #363636
       layout: verticalBox
       padding: 5
       padding-right: 5
+      
 ]], g_ui.getRootWidget())
 utilityInterface:hide()
 
@@ -236,7 +237,7 @@ local BotSwitchPresets = {
     font = "verdana-9px",
     imageSource = "/images/ui/button_rounded",
     off = { textColor = "white"},
-    on  = { textColor = "green"},
+    on  = { textColor = "white"},
   },
 }
 
@@ -324,18 +325,50 @@ UI.Separator(destLeft)
 label = UI.Label("ID Potion Mana:", destLeft) label:setFont("verdana-9px") label:setMarginTop(0)
 potionText = addTextEdit("mi", storage.mi or "23373", function(widget, text) if tonumber(text) then mi = tonumber(text) end storage.mi = tonumber(text) end, destLeft) potionText:setImageColor("#828282") potionText:setMarginLeft(1) potionText:setMarginRight(2) potionText:setFont("verdana-9px")  potionText:setHeight(18)
 createBotSwitch("default", destLeft, "Mana Train ED/MS", storage.utilityToggles, "manaTrainMage")
+UI.Separator(destLeft)
+local utevoLux = UI.TextEdit(storage.utevoLuxText or "Utevo Lux", function(widget, text)
+  storage.utevoLuxText = text
+end,destLeft)
+utevoLux:setImageColor("#828282") utevoLux:setMarginLeft(1) utevoLux:setMarginRight(2) utevoLux:setFont("verdana-9px")  utevoLux:setHeight(18)
+createBotSwitch("default", destLeft, "Utevo Lux", storage.utilityToggles, "utevoLux")
+macro(500, function()
+  if storage.utilityToggles["utevoLux"] ~= true then return end
+  say(storage.utevoLuxText)
+  delay(60000)
+end)
+
 
 -- LADO DIREITO
-local nextBpContainer = UI.Container(function(widget, items) storage.proximaBpID = items end, true, destRight) nextBpContainer:setHeight(46) nextBpContainer:setItems(storage.proximaBpID)
+local nextBpContainer = UI.ContainerEx(function(widget, items) storage.proximaBpID = items end, true, destRight) nextBpContainer:setHeight(46) nextBpContainer:setItems(storage.proximaBpID)
 createBotSwitch("default", destRight, "Abrir Proxima BP", storage.utilityToggles, "proximaBP")
-local transformCoin = UI.Container(function(widget, items) storage.transformarCoin = items end, true, destRight) transformCoin:setHeight(46) transformCoin:setItems(storage.transformarCoin) transformCoin:setMarginTop(4)
+local transformCoin = UI.ContainerEx(function(widget, items) storage.transformarCoin = items end, true, destRight) transformCoin:setHeight(46) transformCoin:setItems(storage.transformarCoin) transformCoin:setMarginTop(4)
 createBotSwitch("default", destRight, "Transformar Coin", storage.utilityToggles, "transformCoin")
 UI.Separator(destRight)
-local doorContainer = UI.Container(function(widget, items) storage.doorIds = items doorId = properTable(storage.doorIds) end, true, destRight) doorContainer:setHeight(46) doorContainer:setItems(storage.doorIds) doorId = properTable(storage.doorIds)
+local doorContainer = UI.ContainerEx(function(widget, items) storage.doorIds = items doorId = properTable(storage.doorIds) end, true, destRight) doorContainer:setHeight(46) doorContainer:setItems(storage.doorIds) doorId = properTable(storage.doorIds)
 createBotSwitch("default", destRight, "Abrir Portas", storage.utilityToggles, "abrirPortas")
 UI.Separator(destRight)
 manaText = addTextEdit("Mana Train", storage.manaTrainText, function(widget, text) storage.manaTrainText = text end, destRight) manaText:setImageColor("#828282") manaText:setMarginLeft(1) manaText:setMarginRight(2) manaText:setFont("verdana-9px")  manaText:setHeight(18)
 createBotSwitch("default", destRight, "Mana Train", storage.utilityToggles, "manaTrain")
+UI.Separator(destRight)
+local msgTradeText = UI.TextEdit(storage.autoTradeMessage or "INSET MSG TRADE!", function(widget, text)
+  storage.autoTradeMessage = text
+end,destRight)
+msgTradeText:setImageColor("#828282") msgTradeText:setMarginLeft(1) msgTradeText:setMarginRight(2) msgTradeText:setFont("verdana-9px")  msgTradeText:setHeight(18)
+createBotSwitch("default", destRight, "Message Trade", storage.utilityToggles, "msgTrade")
+
+macro(1000, function()
+  if storage.utilityToggles["msgTrade"] ~= true then return end
+  local trade = getChannelId("advertising")
+  if not trade then
+    trade = getChannelId("trade")
+  end
+  if trade and storage.autoTradeMessage:len() > 0 then    
+    sayChannel(trade, storage.autoTradeMessage)
+    delay(20000)
+  end
+end)
+
+
 
 local function getNextBpIdList()
   local ids = {}
@@ -429,7 +462,7 @@ onTextMessage(function(mode, text)
         if tmp <= 50 then
           NPC.say("hi")
           schedule(1000, function() NPC.say("trade") end)
-          schedule(1500, function() NPC.buy(storage.mi, 200) end)
+          schedule(1500, function() NPC.buy(storage.mi, 250) end)
           schedule(2000, function() NPC.say("bye") end)
           schedule(2500, function() NPC.closeTrade() end)
         end
@@ -535,7 +568,7 @@ local familiarSpellByVoc = {
   knight   = "utevo gran res eq",
   paladin  = "utevo gran res sac",
   sorcerer = "utevo gran res ven",
-  druid    = "utevo gran res dru",
+  druid    = " utevo gran res dru",
   monk     = "utevo gran res tio"
 }
 
@@ -756,7 +789,6 @@ local availableKeys2 = {
 
 macro(100, function()
   if storage.utilityToggles["superDash"] ~= true then return end
-
   local myPos = pos()
   if not myPos then return end
 
