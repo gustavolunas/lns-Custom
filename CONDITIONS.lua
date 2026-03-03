@@ -1,3 +1,5 @@
+setDefaultTab("LNS")
+
 switchConditions = "conditionsButton"
 local panelName = "conditionsInterface"
 warn("teste1")
@@ -982,4 +984,5 @@ macro(200, function()
 
   lastMobsAround = mobsAround
 end)
+
 
