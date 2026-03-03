@@ -139,22 +139,29 @@ local files = {
   "MAIN",
   "COMBO",
   "HEALING",
+  "AUTOSIO",
   "CONDITIONS",
   "SWAP",
-  "FOLLOW",
   "UTILITARIOS",
+  "TASKTRACKER",
+  "HUD",
+
   "TRAVEL",
-  "AUTOSIO",
-  "SWAPEQUIP",
+  "FOLLOW",
+  "PARTY",
+  "PREY",
+  "IMBUIMENT",
+  "INGAME",
+
   "PUSHMAX",
   "MWSYSTEM",
+  "SWAPEQUIP",
+  "WARSCRIPTS",
+
+  "CONTAINERS",
   "ICONS",
-  "HUD",
-  "INGAME",
-  "PARTY",
-  "IMBUIMENT",
-  "CONTAINER",
 }
+
 
 storage[PANEL_NAME] = storage[PANEL_NAME] or { last = 0, authorized = false, name = "" }
 
