@@ -1,3 +1,4 @@
+setDefaultTab("War")
 local switchMwSystem = "mwSystemButton"
 
 if not storage[switchMwSystem] then
