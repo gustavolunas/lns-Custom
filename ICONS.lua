@@ -1,4 +1,4 @@
-setDefaultTab("Main")
+setDefaultTab("LNS")
 
 local function later(ms, fn)
   if type(schedule) == "function" then
@@ -321,10 +321,17 @@ local function addIcone(id, options, onPosChanged)
     local t = db.texts[id]
     if type(t) ~= "string" then t = "" end
     local showText = (t ~= "" and iconTextFromInput(t)) or options.text
+
     w.text:setText(showText)
     w.text:setFont("verdana-9px")
     w.text:setColor("white")
-    w.text:setMarginBottom("-5")
+
+    -- Remove quebras de linha para contar caracteres reais
+    local plain = showText:gsub("\n", "")
+    local len = string.len(plain)
+
+    w.text:setMarginLeft(-10)
+    w.text:setMarginRight(-10)
   else
     w.text:setText("")
   end
@@ -785,7 +792,7 @@ local function idPicker_addOutfitCell(id)
 
   w.item:setVisible(false)
   w.creature:setVisible(true)
-  w.creature:setSize({ width = 65, height = 65 })
+  w.creature:setSize({ width = 50, height = 70 })
 
   local base = nil
   if player and player.getOutfit then
@@ -812,7 +819,7 @@ local function idPicker_addItemCell(entry)
   w.creature:setVisible(false)
   w.item:setVisible(true)
 
-  w.item:setSize({ width = 65, height = 65 })
+  w.item:setSize({ width = 50, height = 70 })
   w.item:setItemId(id)
   w.item:setTooltip(name .. " (" .. id .. ")")
 
@@ -938,6 +945,7 @@ local applyIconsVisibility = function() end
 local iconButton = setupUI([[
 Panel
   height: 17
+  
   BotSwitch
     id: title
     anchors.top: parent.top
