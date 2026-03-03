@@ -4,7 +4,7 @@ local panelName = "renameContainers"
 if type(storage[panelName]) ~= "table" then
     storage[panelName] = {
         enabled = false;
-        height = 300,
+        height = 330,
         purse = true;
         list = {
             {
@@ -158,7 +158,7 @@ BackpackName < Label
     tooltip: Open container inside with the same ID.
 
 ContListsWindow < UIWindow
-  size: 465 300
+  size: 465 330
   border: 1 black
   anchors.centerIn: parent
   margin-top: -60
@@ -360,6 +360,16 @@ ContListsWindow < UIWindow
     margin-top: 2
     margin-left: 15
     font: verdana-9px
+
+  ResizeBorder
+    id: bottomResizeBorder
+    anchors.fill: separator
+    height: 3
+    minimum: 330
+    maximum: 330
+    margin-left: 3
+    margin-right: 3
+    background: #ffffff88
 ]])
 
 function findItemsInArray(t, tfind)
@@ -442,7 +452,7 @@ if rootWidget then
         config.height = new.height
     end
 
-    contListWindow:setHeight(config.height or 300)
+    contListWindow:setHeight(config.height or 330)
 
     renameContui.editContList.onClick = function(widget)
         contListWindow:show()
@@ -726,10 +736,3 @@ onContainerClose(function(container)
         mainLoop:setOn()
     end
 end)
-
-
-
-
-
-
-
