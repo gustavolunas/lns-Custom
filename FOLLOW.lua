@@ -1084,7 +1084,7 @@ macro(1000, function()
   local msg = "ATACAR: " .. encodeTargetId(t:getId())
   sayChannel(1, msg)
 
-  leaderWait = now + 5000
+  leaderWait = now + 8000
 end)
 
 -- =========================
@@ -1092,7 +1092,6 @@ end)
 -- =========================
 onTalk(function(name, level, mode, text, channelId, pos)
   if storage[scriptsPanelName].switches.attackCheck ~= true then return end
-  if channelId ~= 1 then return end
 
   local leaderName = (storage[scriptsPanelName].texts["navAttack"] or ""):lower()
   if leaderName == "" then return end
@@ -1108,4 +1107,5 @@ onTalk(function(name, level, mode, text, channelId, pos)
   if g_game.getAttackingCreature() == target then return end
   g_game.attack(target)
 end)
+
 
