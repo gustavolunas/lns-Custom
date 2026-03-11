@@ -1,5 +1,3 @@
-setDefaultTab("LNS")
-
 switchHud = "hudButton"
 
 UI.Separator()
@@ -19,9 +17,8 @@ Panel
     color: white
     image-source: /images/ui/button_rounded
     $on:
-      font: verdana-9px
       color: green
-      image-color: gray
+      image-color: green
     $!on:
       image-color: gray
       color: white
@@ -94,6 +91,7 @@ function applyHudSwitches(root)
   bindHudBotSwitch(root, "targetHP")
   bindHudBotSwitch(root, "deadTimers")
   bindHudBotSwitch(root, "taskTracker")
+  bindHudBotSwitch(root, "comboManager")
 end
 
 hudInterface = setupUI([[
@@ -254,6 +252,21 @@ UIWindow
       width: 25
       font: terminus-10px
       text: TASK TRACKER
+      image-source:
+      $on:
+        color: green
+        opacity: 1.00
+      $!on:
+        color: gray
+        opacity: 0.80
+
+    BotSwitch
+      id: comboManager
+      margin-top: 10
+      margin-right: 5
+      width: 25
+      font: terminus-10px
+      text: MANAGER ATTACKBOT
       image-source:
       $on:
         color: green
@@ -830,6 +843,17 @@ macro(250, function()
   end
   if hudMasterOn() and (storage[HUD_PANEL_STORAGE] and storage[HUD_PANEL_STORAGE].switches and storage[HUD_PANEL_STORAGE].switches.taskTracker) then
     taskInterface:show()
+    return
+  end
+end)
+
+macro(250, function()
+  if not hudMasterOn() or not (storage[HUD_PANEL_STORAGE] and storage[HUD_PANEL_STORAGE].switches and storage[HUD_PANEL_STORAGE].switches.comboManager) then
+    comboSetupInterface:hide()
+    return
+  end
+  if hudMasterOn() and (storage[HUD_PANEL_STORAGE] and storage[HUD_PANEL_STORAGE].switches and storage[HUD_PANEL_STORAGE].switches.comboManager) then
+    comboSetupInterface:show()
     return
   end
 end)
