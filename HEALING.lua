@@ -20,7 +20,7 @@ Panel
     image-source: /images/ui/button_rounded
     $on:
       color: green
-      image-color: gray
+      image-color: green
     $!on:
       image-color: gray
       color: white
@@ -484,18 +484,27 @@ end
 
 local destPanel = mainPanel.foodContainerPanel
 
-if type(storage.foodItems) ~= "table" then
-  storage.foodItems = { 3607, 3585, 3592, 3600, 3601 }
+if type(settings.food.items) ~= "table" or #settings.food.items == 0 then
+  settings.food.items = { 3607, 3585, 3592, 3600, 3601 }
+  saveSettings(settings)
 end
+
+storage.foodItems = settings.food.items
+
 local foodContainer = UI.ContainerEx(function(widget, items)
-  storage.foodItems = items
+  local cleanItems = normalizeContainerItems(items)
+
+  storage.foodItems = cleanItems
+  settings.food = settings.food or {}
+  settings.food.items = cleanItems
+  saveSettings(settings)
 end, true)
 
 foodContainer:setParent(destPanel)
 foodContainer:fill('parent')
 foodContainer:setOpacity(0.70)
 foodContainer:setImageColor("#363636")
-foodContainer:setItems(storage.foodItems)
+foodContainer:setItems(settings.food.items)
 
 macro(500, function()
   -- segurança básica
@@ -528,7 +537,7 @@ macro(500, function()
     if items then
       for _, item in ipairs(items) do
         for _, foodItem in ipairs(storage.foodItems) do
-          if item:getId() == foodItem.id then
+          if item:getId() == foodItem then
             g_game.use(item)
             return
           end
