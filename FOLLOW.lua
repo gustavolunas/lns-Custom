@@ -1071,7 +1071,7 @@ end
 -- =========================
 -- LEADER: fala no party
 -- =========================
-macro(200, function()
+macro(1000, function()
   if storage[scriptsPanelName].switches.souLider ~= true then return end
   if not (player:isPartyMember() or player:isPartyLeader() or player:getShield() > 2) then return end
 
@@ -1084,7 +1084,7 @@ macro(200, function()
   local msg = "ATACAR: " .. encodeTargetId(t:getId())
   sayChannel(1, msg)
 
-  leaderWait = now + 4000
+  leaderWait = now + 5000
 end)
 
 -- =========================
@@ -1108,3 +1108,4 @@ onTalk(function(name, level, mode, text, channelId, pos)
   if g_game.getAttackingCreature() == target then return end
   g_game.attack(target)
 end)
+
