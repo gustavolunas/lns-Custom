@@ -163,7 +163,6 @@ local files = {
   
   "ICONS",
   "CONTAINERS",
-  "BUYMARKET",
 }
 
 
