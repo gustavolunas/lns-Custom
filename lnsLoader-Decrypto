@@ -138,6 +138,7 @@ local baseUrl = "https://raw.githubusercontent.com/gustavolunas/lns-Custom/refs/
 local files = {
   "MAIN",
   "COMBO",
+  "COMBOSETUP",
   "HEALING",
   "AUTOSIO",
   "CONDITIONS",
@@ -153,13 +154,16 @@ local files = {
   "IMBUIMENT",
   "INGAME",
 
+  "WARSCRIPTS1",
   "PUSHMAX",
   "MWSYSTEM",
   "SWAPEQUIP",
-  "WARSCRIPTS",
+  "WARSCRIPTS2",
 
-  "CONTAINERS",
+  
   "ICONS",
+  "CONTAINERS",
+  "BUYMARKET",
 }
 
 
