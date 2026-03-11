@@ -63,9 +63,8 @@ Panel
     color: white
     image-source: /images/ui/button_rounded
     $on:
-      font: verdana-9px
       color: green
-      image-color: gray
+      image-color: green
     $!on:
       image-color: gray
       color: white
@@ -1107,5 +1106,6 @@ onTalk(function(name, level, mode, text, channelId, pos)
   if g_game.getAttackingCreature() == target then return end
   g_game.attack(target)
 end)
+
 
 
