@@ -1,5 +1,3 @@
-setDefaultTab("LNS")
-
 switchConditions = "conditionsButton"
 local panelName = "conditionsInterface"
 
@@ -30,9 +28,8 @@ Panel
     color: white
     image-source: /images/ui/button_rounded
     $on:
-      font: verdana-9px
       color: green
-      image-color: gray
+      image-color: green
     $!on:
       image-color: gray
       color: white
@@ -755,7 +752,6 @@ macro(200, function()
     end
   end
 
-  -- Haste (só se estiver se movendo)
   if sw["spellHaste"] then
     if not hasHaste() and not isParalyzed() then
       if isInPz() then return end
@@ -798,6 +794,8 @@ macro(200, function()
   local cfg = storage[panelName]
   if not cfg or not cfg.switches then return end
   if not cfg.switches["cureStatus"] then return end
+
+  if g_game.isAttacking() then return; end
 
   -- Mantive as mesmas spells (tudo junto num único switch)
   if isPoisioned() then
@@ -899,14 +897,6 @@ end)
 local lastExetaAmpRes = 0
 local exetaAmpResCooldown = 6000
 
-onTalk(function(name, level, mode, text, channelId, pos)
-  text = text:lower();
-  if name ~= player:getName() then return; end
-  if text == 'Exeta Res' or text == 'exeta res' then
-    exetaSlow = now + 1900
-  end
-end)
-
 macro(200, function()
   if not storage[switchConditions] or not storage[switchConditions].enabled then return end
 
@@ -923,66 +913,39 @@ macro(200, function()
 
   say(spell)
   lastExetaAmpRes = now
-  delay(3000)
+  delay(1000)
 end)
 
 -- =========================
 -- EXETA LOOT (switch exetaLoot)
 -- =========================
-local lastExetaLoot = 0
-local exetaLootCooldown = 2000
-local rangeCheck = 3
+local exetaLootDelay = 1000
 
-local lastMobsAround = 0
-local lastHadTarget = 0
-local fightGraceMs = 2000
-
-macro(200, function()
+local nextExeta = 0
+onCreatureDisappear(function(creature)
   if not storage[switchConditions] or not storage[switchConditions].enabled then return end
-
-  local cfg = storage[panelName]
-  if not cfg or not cfg.switches or not cfg.switches["exetaLoot"] then return end
-
+  if nextExeta > now  then return end
   if isInPz() then return end
-  if now - lastExetaLoot < exetaLootCooldown then return end
+  if not creature:isMonster() then return end
 
-  if g_game.isAttacking() then
-    lastHadTarget = now
-  end
+  local pos = player:getPosition()
+  local mpos = creature:getPosition()
+  local name = creature:getName()
 
-  local mobsAround = 0
-  local me = pos()
-  if not me then return end
+  if pos.z ~= mpos.z or getDistanceBetween(pos, mpos) > 1 then return end
 
-  for _, c in ipairs(getSpectators(false)) do
-    if c and c.isMonster and c:isMonster() then
-      local p = c:getPosition()
-      if p and p.z == me.z then
-        local dx = math.abs(p.x - me.x)
-        local dy = math.abs(p.y - me.y)
-        if math.max(dx, dy) <= rangeCheck then
-          mobsAround = mobsAround + 1
-        end
-      end
-    end
-  end
+  schedule(100, function()
+    local tile = g_map.getTile(mpos)
+    if not tile then return end
 
-  local hadRealFight = (lastHadTarget > 0 and (now - lastHadTarget) <= fightGraceMs)
+    local container = tile:getTopUseThing()
+    if not container or not container:isContainer() then return end
 
-  if lastMobsAround > 0 and mobsAround == 0 and not g_game.isAttacking() and hadRealFight then
-    delay(200)
+    nextExeta = now + exetaLootDelay
     say("exeta loot")
     say("exeta loot")
     say("exeta loot")
     say("exeta loot")
     say("exeta loot")
-    say("exeta loot")
-    lastExetaLoot = now
-  end
-
-  lastMobsAround = mobsAround
+  end)
 end)
-
-
-
-
