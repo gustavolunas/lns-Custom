@@ -6,7 +6,6 @@ if not storage[switchSwap] then storage[switchSwap] = { enabled = false } end
 swapButton = setupUI([[
 Panel
   height: 17
-  
   BotSwitch
     id: title
     anchors.top: parent.top
@@ -18,13 +17,11 @@ Panel
     color: white
     image-source: /images/ui/button_rounded
     $on:
-      font: verdana-9px
       color: green
-      image-color: gray
+      image-color: green
     $!on:
       image-color: gray
       color: white
-
   Button
     id: settings
     anchors.top: prev.top
@@ -1525,6 +1522,7 @@ macro(200, function()
 
   __bpInteligenteTick("amulet", idx, row, item2, item3)
 end)
+
 
 
 
