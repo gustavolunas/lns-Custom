@@ -4,45 +4,26 @@ UI.Separator():setMarginTop(-0)
 
 LABEL = UI.Label("[LNS TOOLS]")
 LABEL:setMarginTop(-1)
-local colors = {
-  {r = 160, g = 160, b = 160}, -- cinza
-  {r = 255, g = 255, b = 255}, -- branco
-  {r = 20,  g = 20,  b = 20},  -- preto
-}
+LABEL:setFont("verdana-11px-rounded")
+macro(10, function()
+    local text = '[ TOOLS SCRIPTS ]'
+    local time = os.clock() * 4
+    local coloredText = {}
 
 
-local currentColor = 1
-local step = 0
-local stepsTotal = 40      -- quanto maior, mais suave
-local intervalMs = 50      -- velocidade da animação
+    for i = 1, #text do
+        local char = text:sub(i, i)
+        local color = setRainbowColor(time + i * 0.1) 
+        table.insert(coloredText, char) 
+        table.insert(coloredText, color) 
+    end
 
-local function rgbToHex(r, g, b)
-  return string.format("#%02X%02X%02X", r, g, b)
-end
 
-local function animateLabelColor()
-  local from = colors[currentColor]
-  local to   = colors[currentColor % #colors + 1]
-
-  step = step + 1
-  local t = step / stepsTotal
-
-  local r = math.floor(from.r + (to.r - from.r) * t)
-  local g = math.floor(from.g + (to.g - from.g) * t)
-  local b = math.floor(from.b + (to.b - from.b) * t)
-
-  LABEL:setColor(rgbToHex(r, g, b))
-  LABEL:setFont("verdana-11px-rounded")
-
-  if step >= stepsTotal then
-    step = 0
-    currentColor = currentColor % #colors + 1
-  end
-end
-
-macro(intervalMs, function()
-  animateLabelColor()
+    if LABEL and LABEL then
+        LABEL:setColoredText(coloredText)
+    end
 end)
+
 UI.Separator():setMarginTop(1)
 
 switchTravel = "travelButton"
@@ -63,9 +44,8 @@ Panel
     color: white
     image-source: /images/ui/button_rounded
     $on:
-      font: verdana-9px
       color: green
-      image-color: gray
+      image-color: green
     $!on:
       image-color: gray
       color: white
