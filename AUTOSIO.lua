@@ -1,13 +1,11 @@
-setDefaultTab("LNS")
-
-local switchSio = "sioButton"
+switchSio = "sioButton"
 if not storage[switchSio] then storage[switchSio] = { enabled = false } end
 
 local STORAGE_KEY = "autoSioSystem_v1"
 storage[STORAGE_KEY] = storage[STORAGE_KEY] or {}
 
 local cfg = storage[STORAGE_KEY]
-cfg.spell = cfg.spell or "EXURA SIO"
+cfg.spell = cfg.spell or "exura sio"
 cfg.usePrioList   = cfg.usePrioList == true
 cfg.useFriendList = (cfg.useFriendList ~= false)
 cfg.useGuild      = cfg.useGuild == true
@@ -68,9 +66,8 @@ Panel
     color: white
     image-source: /images/ui/button_rounded
     $on:
-      font: verdana-9px
       color: green
-      image-color: gray
+      image-color: green
     $!on:
       image-color: gray
       color: white
