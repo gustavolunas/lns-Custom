@@ -10,6 +10,83 @@ end
 
 updateTabsBorder()
 
+MAIN_DIRECTORY = "/bot/" .. modules.game_bot.contentsPanel.config:getCurrentOption().text .. "/storage/"
+STORAGE_DIRECTORY = "" .. MAIN_DIRECTORY .. "Settings.json";
+-- cria o json se não existir
+if not g_resources.fileExists(STORAGE_DIRECTORY) then
+  g_resources.writeFileContents(STORAGE_DIRECTORY, json.encode({}, 2))
+end
+
+-- função para ler
+function loadSettings()
+  local status, result = pcall(function()
+    return json.decode(g_resources.readFileContents(STORAGE_DIRECTORY))
+  end)
+  if status then
+    return result
+  end
+  return {}
+end
+
+-- função para salvar
+function saveSettings(data)
+  local status, result = pcall(function()
+    return json.encode(data, 2)
+  end)
+  if status then
+    g_resources.writeFileContents(STORAGE_DIRECTORY, result)
+  end
+end
+
+function normalizeContainerItems(items)
+  local r = {}
+  if type(items) ~= "table" then return r end
+
+  for _, v in pairs(items) do
+    local id = nil
+
+    if type(v) == "table" then
+      id = (v.getId and v:getId()) or v.id
+    else
+      id = v
+    end
+
+    id = tonumber(id)
+    if id and id > 0 then
+      table.insert(r, id)
+    end
+  end
+
+  return r
+end
+
+settings = loadSettings()
+
+settings.combo = settings.combo or {}
+settings.combo.safeIdsAndares = normalizeContainerItems(settings.combo.safeIdsAndares or {435, 1948, 386, 1949})
+
+settings.food = settings.food or {}
+settings.food.items = normalizeContainerItems(settings.food.items or {})
+
+settings.utility = settings.utility or {}
+settings.utility.proximaBpID = normalizeContainerItems(settings.utility.proximaBpID or {2854})
+settings.utility.transformarCoin = normalizeContainerItems(settings.utility.transformarCoin or {3031, 3035, 3043})
+settings.utility.doorIds = normalizeContainerItems(settings.utility.doorIds or {5129, 5102, 5111, 5120, 11246})
+
+settings.follow = settings.follow or {}
+settings.follow.ropeID = tostring(settings.follow.ropeID or "3003")
+settings.follow.ropeIDS = normalizeContainerItems(settings.follow.ropeIDS or {386})
+settings.follow.useIDS = normalizeContainerItems(settings.follow.useIDS or {435})
+settings.follow.stairIDS = normalizeContainerItems(settings.follow.stairIDS or {484, 17394, 1977, 414})
+settings.follow.buracoIDS = normalizeContainerItems(settings.follow.buracoIDS or {1959})
+
+settings.pvp = settings.pvp or {}
+settings.pvp.destroyField = settings.pvp.destroyField or {}
+settings.pvp.destroyField.fieldItems = normalizeContainerItems(settings.pvp.destroyField.fieldItems or {2118, 2122, 105, 2119})
+
+
+saveSettings(settings)
+
 sepp = UI.Separator():setMarginTop(-0)
 
 local panelName = "codPanel"
@@ -88,7 +165,31 @@ Panel
     anchors.top: buttonYoutube.bottom
     margin-top: 5
 ]])
-codPanel.textLabel2:setText("[LNS CUSTOM]")
+function setRainbowColor(time)
+    local r = math.floor(127 * math.sin(time) + 128)
+    local g = math.floor(127 * math.sin(time + 2 * math.pi / 3) + 128)
+    local b = math.floor(127 * math.sin(time + 4 * math.pi / 3) + 128)
+    return string.format("#%02X%02X%02X", r, g, b)
+end
+macro(10, function()
+    local text = '[ LNS CUSTOM ]'
+    local time = os.clock() * 4
+    local coloredText = {}
+
+
+    for i = 1, #text do
+        local char = text:sub(i, i)
+        local color = setRainbowColor(time + i * 0.1) 
+        table.insert(coloredText, char) 
+        table.insert(coloredText, color) 
+    end
+
+
+    if codPanel and codPanel.textLabel2 then
+        codPanel.textLabel2:setColoredText(coloredText)
+    end
+end)
+
 local link = "https://imgur.com/7DxD39S.png"
 HTTP.downloadImage(link, function(texId)
   if texId then
@@ -103,48 +204,6 @@ codPanel.buttonDiscord.onClick = function()
 end
 
 local configName = modules.game_bot.contentsPanel.config:getCurrentOption().text
-
-local label = codPanel.textLabel2
-
--- cores alvo (RGB)
-local colors = {
-  {r = 160, g = 160, b = 160}, -- cinza
-  {r = 255, g = 255, b = 255}, -- branco
-  {r = 20,  g = 20,  b = 20},  -- preto
-}
-
-local currentColor = 1
-local step = 0
-local stepsTotal = 40      -- quanto maior, mais suave
-local intervalMs = 50      -- velocidade da animação
-
-local function rgbToHex(r, g, b)
-  return string.format("#%02X%02X%02X", r, g, b)
-end
-
-local function animateLabelColor()
-  local from = colors[currentColor]
-  local to   = colors[currentColor % #colors + 1]
-
-  step = step + 1
-  local t = step / stepsTotal
-
-  local r = math.floor(from.r + (to.r - from.r) * t)
-  local g = math.floor(from.g + (to.g - from.g) * t)
-  local b = math.floor(from.b + (to.b - from.b) * t)
-
-  label:setColor(rgbToHex(r, g, b))
-
-  if step >= stepsTotal then
-    step = 0
-    currentColor = currentColor % #colors + 1
-  end
-end
-
-macro(intervalMs, function()
-  if not label then return end
-  animateLabelColor()
-end)
 
 MyConfigName = modules.game_bot.contentsPanel.config:getCurrentOption().text
 
