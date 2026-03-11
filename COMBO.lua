@@ -4,9 +4,6 @@ if not storage[switchCombo] then
     storage[switchCombo] = { enabled = false }
 end
 
--- =========================================
--- SUA UI
--- =========================================
 comboButton = setupUI([[
 Panel
   height: 17
@@ -23,7 +20,7 @@ Panel
     color: white
     $on:
       color: green
-      image-color: gray
+      image-color: green
     $!on:
       image-color: gray
       color: white
@@ -48,7 +45,6 @@ Panel
 comboButton:setId(switchCombo)
 comboButton.title:setOn(storage[switchCombo].enabled)
 
--- clique protegido (mesmo que setEnabled falhe em algum client)
 comboButton.title.onClick = function(widget)
   local newState = not widget:isOn()
   widget:setOn(newState)
@@ -858,7 +854,9 @@ UIWindow
 runeAddPanel:hide()
 
 local STORAGE_KEY = "combo_actions_global_v1"
-
+local MANAGER_SYNC_KEY = "combo_manager_sync_v1"
+storage[MANAGER_SYNC_KEY] = storage[MANAGER_SYNC_KEY] or { rev = 0 }
+local lastManagerSyncRev = storage[MANAGER_SYNC_KEY].rev or 0
 -- =========================================================
 -- UTIL
 -- =========================================================
@@ -912,7 +910,6 @@ local function nowMs()
   return (os.time() * 1000) + math.floor((os.clock() * 1000) % 1000)
 end
 
--- tenta pegar sprite de item (OTCv8 costuma ter g_things)
 local function setItemIcon(widget, itemId)
   if not widget then return end
   itemId = tonumber(itemId)
@@ -941,15 +938,11 @@ local function defaultCfg()
       manterDist  = false,
       checkStairs = false,
       ignoreParty = false,
-      checkAndares    = false,
-      sqmSafe     = 5,
-      safeIdsAndares = {435, 1948, 386},
+      checkAndares = false,
+      sqmSafe = 5,
     },
     actions = {
-      -- { type="spell", enabled=true, spell="exori gran", dist=3, mana=200, mobs=2, cd=1200, safe=true }
-      -- { type="rune",  enabled=true, runeId=3155,        dist=7, mana=0,   mobs=1, cd=800,  safe=false }
     },
-    -- cache do formulário (não depende de onValueChange do scrollbar)
     draft = {
       spell = { cd = 0 },
       rune  = { cd = 0, id = 0 },
@@ -973,7 +966,8 @@ end
 storage[STORAGE_KEY] = mergeDefaults(storage[STORAGE_KEY], defaultCfg())
 local cfg = storage[STORAGE_KEY]
 
-if type(cfg.main.safeIdsAndares) ~= "table" then cfg.main.safeIdsAndares = {435,1948,386} end
+cfg.main.safeIdsAndares = settings.combo.safeIdsAndares
+
 if type(cfg.actions) ~= "table" then cfg.actions = {} end
 cfg.draft = cfg.draft or { spell = { cd = 0 }, rune = { cd = 0 } }
 cfg.draft.spell = cfg.draft.spell or { cd = 0 }
@@ -1004,7 +998,6 @@ local ui   = comboInterface
 local spUI = spellAddPanel
 local rnUI = runeAddPanel
 
--- main widgets
 local spellList   = ui.spellList
 local addSpellBtn = ui.adicionarSpell
 local addRuneBtn  = ui.adicionarRuna
@@ -1019,7 +1012,6 @@ local checkAndares    = ui.checkAndares
 local sqmSafe     = ui.sqmSafe
 local idsSafePanel= ui.idsSafeAndares
 
--- spell panel widgets
 local sp_spell    = W(spUI, "magia")
 local sp_dist     = W(spUI, "distance")
 local sp_mana     = W(spUI, "mana")
@@ -1040,7 +1032,7 @@ local function getBotItemId(w)
     local id = tonumber(w:getItemId()) or 0
     return id
   end
-  -- fallback muito raro
+
   if w.getItem and w:getItem() and w:getItem().getId then
     return tonumber(w:getItem():getId()) or 0
   end
@@ -1061,7 +1053,6 @@ local function setBotItemId(w, id)
   end
 end
 
--- rune panel widgets
 local rn_id       = W(rnUI, "runa")
 if rn_id and rn_id.onItemChange then
   rn_id.onItemChange = function(widget)
@@ -1084,8 +1075,15 @@ local rn_calcBtn  = W(rnUI, "calculeCooldown")
 -- Safe IDs Andares (BotContainer) -> cfg.main.safeIdsAndares
 -- =========================================================
 local idsSafeContainer = UI.ContainerEx(function(widget, items)
-  if type(items) ~= "table" then items = {} end
-  cfg.main.safeIdsAndares = items
+  local cleanItems = normalizeContainerItems(items)
+
+  cfg.main.safeIdsAndares = cleanItems
+
+  settings = loadSettings()
+  settings.combo = settings.combo or {}
+  settings.combo.safeIdsAndares = cleanItems
+
+  saveSettings(settings)
 end, true, idsSafePanel)
 
 idsSafeContainer:setParent(idsSafePanel)
@@ -1135,7 +1133,7 @@ UIWidget
     anchors.verticalCenter: parent.verticalCenter
     margin-top: 0
     margin-left: 6
-    font: verdana-9px-bold
+    font: verdana-9px
     color: white
     text: ""
 
@@ -1165,7 +1163,7 @@ UIWidget
     anchors.verticalCenter: parent.verticalCenter
     margin-left: 1
     margin-top: -1
-    font: verdana-9px-bold
+    font: verdana-9px
     text-auto-resize: true
     color: white
     text: "SAFE: N"
@@ -1220,7 +1218,6 @@ local function resetSpellForm()
 end
 
 local function resetRuneForm()
-  -- limpa o draft tb
   cfg.draft.rune.id = 0
 
   -- limpa visualmente o BotItem
@@ -1291,21 +1288,18 @@ local function refreshList()
     local row = setupUI(rowTemplate, spellList)
     row.entryIndex = i
 
-    -- Enable/Disable
     row.enabled:setChecked(entry.enabled and true or false)
     row.enabled.onClick = function()
       entry.enabled = not entry.enabled
       row.enabled:setChecked(entry.enabled)
     end
 
-    -- Remove
     row.remove.onClick = function()
       table.remove(cfg.actions, row.entryIndex)
       editingIndex = nil
       refreshList()
     end
 
-    -- Conteúdo principal
     if entry.type == "rune" then
       row.spellName:setText("   ")
       row.spellName:setVisible(true)
@@ -1318,13 +1312,11 @@ local function refreshList()
       row.spellName:setText(tostring(entry.spell or ""))
     end
 
-    -- Dist/Mobs
     local dist = tonumber(entry.dist or 0) or 0
     local mobs = tonumber(entry.mobs or 0) or 0
     row.distText:setText(string.format("[%d Sqm Range | ", dist))
     row.mobsText:setText(string.format("+%d Creature]", mobs))
 
-    -- SAFE com cor
     local safeChar  = entry.safe and "SAFE" or "UNSAFE"
     local safeColor = entry.safe and "#00FF00" or "#FF4040"
     if row.safeText.setColoredText then
@@ -1334,7 +1326,6 @@ local function refreshList()
       row.safeText:setColor(safeColor)
     end
 
-    -- Tooltip
     local tip = ""
     if entry.type == "spell" then
       tip = string.format(
@@ -1400,6 +1391,14 @@ local function refreshList()
     end
   end
 end
+
+macro(100, function()
+  local rev = storage[MANAGER_SYNC_KEY] and storage[MANAGER_SYNC_KEY].rev or 0
+  if rev ~= lastManagerSyncRev then
+    lastManagerSyncRev = rev
+    refreshList()
+  end
+end)
 
 -- =========================================================
 -- Move up/down
@@ -1577,7 +1576,6 @@ end
 
 resetRuntimeCooldowns()
 
--- quando troca de char / reconecta
 if g_game and connect then
   connect(g_game, {
     onGameStart = function()
@@ -1644,13 +1642,9 @@ if sp_calcBtn then
   end
 end
 
--- -------------------------
--- RUNE CD (por MISSILE) + aprende missileId automaticamente
--- -------------------------
 -- =========================================================
 -- RUNE COOLDOWN - MISSILE ONLY (SEM FALLBACK)
 -- =========================================================
-
 cfg.draft = cfg.draft or {}
 cfg.draft.rune = cfg.draft.rune or { cd = 0 }
 
@@ -1678,7 +1672,6 @@ local function applyRuneCd(ms)
   if ms < 0 then ms = 0 end
   if ms > 60000 then ms = 60000 end
 
-  -- salva no storage
   cfg.draft.rune.cd = ms
 
   -- aplica no painel
@@ -1718,14 +1711,11 @@ end
 
 -- =========================================================
 -- [INSERIDO] AUTO USAR RUNA 2x (FORCANDO TENTATIVAS)
--- - tenta soltar o 1o missile
--- - quando pegar o 1o missile, começa a forcar o 2o missile
--- - para sozinho quando applyRuneCd() rodar
 -- =========================================================
 local runeAuto = {
   active = false,
   runeId = 0,
-  stage = 0,       -- 1=forcar 1o missile, 2=forcar 2o missile
+  stage = 0,    
   nextAt = 0,
   startedAt = 0
 }
@@ -1747,7 +1737,6 @@ macro(60, function()
 
   local t = nowMs()
 
-  -- timeout pra nao ficar infinito (ex: sem missile no servidor)
   if t - runeAuto.startedAt > 20000 then
     warn("[CD-RUNE] Timeout: nao consegui medir (sem 2 missiles).")
     runeAuto.active = false
@@ -1756,16 +1745,13 @@ macro(60, function()
 
   if runeAuto.nextAt ~= 0 and t < runeAuto.nextAt then return end
 
-  -- intervalo de tentativa (nao spammar demais)
   runeAuto.nextAt = t + 250
 
-  -- stage 1: forca sair o 1o missile (ate runeCd.missileId ser aprendido)
   if runeAuto.stage == 1 then
     tryUseRune(runeAuto.runeId)
     return
   end
 
-  -- stage 2: forca sair o 2o missile (ate applyRuneCd disparar)
   if runeAuto.stage == 2 then
     tryUseRune(runeAuto.runeId)
     return
@@ -1798,12 +1784,10 @@ local function handleRuneMissile(missile)
 
   local t = nowMs()
 
-  -- primeiro missile → aprende missileId
   if not runeCd.missileId then
     runeCd.missileId = mid
     runeCd.lastTime = t
 
-    -- [INSERIDO] assim que pegar o 1o missile, começa a forcar o 2o
     if runeAuto.active then
       runeAuto.stage = 2
       runeAuto.nextAt = 0
@@ -1811,13 +1795,10 @@ local function handleRuneMissile(missile)
     return
   end
 
-  -- ignora missiles diferentes
   if mid ~= runeCd.missileId then return end
 
-  -- segundo missile → calcula CD
   if runeCd.lastTime > 0 then
     applyRuneCd(t - runeCd.lastTime)
-    -- applyRuneCd -> stopRuneCd() -> runner para sozinho
   end
 end
 
@@ -2102,33 +2083,28 @@ macro(30, function()
 
   lastTurn = nowt
 end)
--- =========================================================
--- MOTOR DE COMBATE (LNS ENGINE) - LÓGICA INVERTIDA
--- Checkbox MARCADO = Magia Segura (Usa sempre)
--- Checkbox DESMARCADO = Magia Perigosa (Bloqueia se houver perigo)
--- =========================================================
-
-local runeToMissile = {
-    [3155] = 32,  -- SD
-    [3175] = 20,
-    [3191] = 4,
-    [3161] = 22,
-    [3202] = 25
-}
 
 -- =========================================================
 -- 1. DETECTOR DE MAGIAS (PRECISÃO EXATA)
 -- =========================================================
+local combatGlobalUntil = 0
+
+local COMBAT_GLOBAL_DELAY = 1000
+local worldName = g_game.getWorldName() or ""
+
+if worldName == "Telaria" or worldName == "Eternia" or worldName == "Aurera-Global" then
+  COMBAT_GLOBAL_DELAY = 2000
+end
+
 onTalk(function(name, level, mode, text, channelId, pos)
     if name ~= g_game.getLocalPlayer():getName() then return end
     text = text:lower()
     
-    -- Varre sua lista de ações para ver se o que você falou é uma magia do combo
     if cfg and cfg.actions then
         for _, action in ipairs(cfg.actions) do
             if action.enabled and action.type == "spell" and action.spell:lower() == text then
-                -- Aplica o cooldown REAL configurado na action + tempo atual
                 action.nextCast = now + (action.cd or 1000)
+                combatGlobalUntil = now + COMBAT_GLOBAL_DELAY
             end
         end
     end
@@ -2137,39 +2113,64 @@ end)
 -- =========================================================
 -- 2. DETECTOR DE RUNAS (PRECISÃO EXATA)
 -- =========================================================
+local runeToMissile = {
+    [3155] = 32,  -- SD
+    [3175] = 30,
+    [3191] = 4,
+    [3161] = 29,
+    [3202] = 36
+}
+
+local worldName = g_game.getWorldName() or ""
+
+local RUNE_WORLD_COOLDOWN = 1000
+
+if worldName == "Telaria" 
+or worldName == "Eternia" 
+or worldName == "Aurera-Global" then
+  RUNE_WORLD_COOLDOWN = 2000
+end
+
 onMissle(function(missle)
-    local player = g_game.getLocalPlayer()
-    if not player then return end
 
-    local src = missle:getSource()
-    
-    -- Verifica se o míssil saiu do mesmo SQM que o player está
-    -- (Método mais leve e rápido que getCreatures)
-    local pPos = player:getPosition()
-    if src.z ~= pPos.z or src.x ~= pPos.x or src.y ~= pPos.y then return end
+  local player = g_game.getLocalPlayer()
+  if not player then return end
+  if not missle then return end
 
-    local missleId = missle:getId()
+  local src = missle:getSource()
+  if not src then return end
 
-    -- Varre a lista para achar qual runa tem esse efeito de tiro
-    if cfg and cfg.actions then
-        for _, action in ipairs(cfg.actions) do
-            if action.enabled and action.type == "rune" then
-                local rId = tonumber(action.runeId)
-                -- Se o ID do míssil bater com o ID mapeado da runa
-                if rId and runeToMissile[rId] == missleId then
-                    -- Aplica o cooldown REAL configurado na action
-                    userRune = now + (action.cd or 1000)
-                end
-            end
-        end
+  local pPos = player:getPosition()
+  if not pPos then return end
+
+  if src.z ~= pPos.z or src.x ~= pPos.x or src.y ~= pPos.y then
+    return
+  end
+
+  local missleId = tonumber(missle:getId())
+  if not missleId then return end
+
+  if not cfg or not cfg.actions then return end
+
+  for _, action in ipairs(cfg.actions) do
+    if action.enabled and action.type == "rune" then
+
+      local rId = tonumber(action.runeId)
+      local mappedMissile = rId and runeToMissile[rId]
+
+      if mappedMissile and mappedMissile == missleId then
+
+        userRune = now + RUNE_WORLD_COOLDOWN
+        action.nextCast = now + RUNE_WORLD_COOLDOWN
+        combatGlobalUntil = now + COMBAT_GLOBAL_DELAY
+        return
+      end
     end
-end)
+  end
 
+end)
 -- =========================================================
--- CHECK PLAYERS (range = sqmSafe)
--- - detecta player no mesmo andar
--- - ignora PT e ignora guild (emblem==1)
--- - ATIVA quando ui.IgnoreParty (Checar Players) estiver marcado
+-- CHECK PLAYERS
 -- =========================================================
 PLAYERSINSCREEN = false
 
@@ -2202,17 +2203,16 @@ local function isEnemyPlayer(spec)
 end
 
 local function getSpecs(pos, multifloor)
-  -- tenta padrões diferentes pra compatibilidade
   if g_map and g_map.getSpectators then
     local ok, res = pcall(function()
-      return g_map.getSpectators(pos, multifloor) -- (pos, multifloor)
+      return g_map.getSpectators(pos, multifloor)
     end)
     if ok and type(res) == "table" then return res end
   end
 
   if type(getSpectators) == "function" then
     local ok, res = pcall(function()
-      return getSpectators(multifloor) -- (multifloor)
+      return getSpectators(multifloor)
     end)
     if ok and type(res) == "table" then return res end
   end
@@ -2226,7 +2226,6 @@ macro(200, function()
     return
   end
 
-  -- toggle "Checar Players" (seu id IgnoreParty)
   if not cfg.main.ignoreParty then
     PLAYERSINSCREEN = false
     return
@@ -2239,7 +2238,6 @@ macro(200, function()
 
   local range = clampValue(cfg.main.sqmSafe or 8, 1, 8)
 
-  -- 1) SAME FLOOR (rápido e padrão)
   local specsSame = getSpecs(myPos, false)
   for _, spec in ipairs(specsSame) do
     if isEnemyPlayer(spec) then
@@ -2254,8 +2252,6 @@ macro(200, function()
     end
   end
 
-  -- 2) MULTIFLOOR: só checa acima/abaixo se estiver perto de stairs/buracos
-  --    Reaproveita seu detector ANDAR_NAO_SAFE (já calculado pelo checkStairsNearby)
   local nearStairs = (cfg.main.checkStairs == true) and (ANDAR_NAO_SAFE == true)
   if not nearStairs then
     PLAYERSINSCREEN = false
@@ -2267,7 +2263,6 @@ macro(200, function()
     if isEnemyPlayer(spec) then
       local sp = spec:getPosition()
       if sp then
-        -- somente 1 andar acima/abaixo (igual a lógica do script referência)
         if (sp.z == myPos.z - 1) or (sp.z == myPos.z + 1) then
           local dist = getDistanceBetween(myPos, sp)
           if dist <= range then
@@ -2289,6 +2284,7 @@ local SPAM_DELAY = 200 -- Tempo de espera "provisório" até o servidor responde
 macro(100, function()
   if not storage[switchCombo].enabled then return end
   if not cfg.main.enabled then return end
+  if now < combatGlobalUntil then return end
 
   local player = g_game.getLocalPlayer()
   local target = g_game.getAttackingCreature()
@@ -2360,6 +2356,7 @@ macro(100, function()
           if rid > 0 then
             if (not userRune or userRune <= now) then
               useWith(rid, target)
+              delay(1000)
               action.nextCast = now + SPAM_DELAY
             end
             return
