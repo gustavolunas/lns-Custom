@@ -641,9 +641,8 @@ PVPMainWindow < UIWindow
 g_ui.loadUIFromString([[
 PVPSwitch < BotSwitch
   $on:
-    font: verdana-9px
     color: green
-    image-color: gray
+    image-color: green
   $!on:
     image-color: gray
     color: white
@@ -2215,6 +2214,7 @@ end)
 -- Sistema funciona perfeitamente apenas com hotkey
 
 end -- Fim do bloco do sistema de Push
+
 
 
 
