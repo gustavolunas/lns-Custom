@@ -21,9 +21,8 @@ Panel
     image-source: /images/ui/button_rounded
     tooltip: Verifica prey a cada 5 minutos
     $on:
-      font: verdana-9px
       color: green
-      image-color: gray
+      image-color: green
     $!on:
       image-color: gray
       color: white
