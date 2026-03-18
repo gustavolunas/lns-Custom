@@ -825,16 +825,11 @@ local function autoItemOnState(root)
 end
 
 autoItemOnState(panelSwap)
-
 -- ==========================================================
 -- SWAP + EQUIP FULL (RING/AMULET) - BLOCO ÚNICO FINAL
 -- ==========================================================
 
--- ==========================================================
--- SWAP + EQUIP FULL (RING/AMULET) - BLOCO ÚNICO FINAL
--- ==========================================================
-
-local __swapOld = g_game.getClientVersion() < 800
+local __swapOld = g_game.getClientVersion() <= 900
 local __SWAP_CD_MS = 500  -- ✅ 7s
 
 local __CD_MIGHT_RING = 3048
