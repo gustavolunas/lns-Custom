@@ -6,6 +6,7 @@ if not storage[switchSwap] then storage[switchSwap] = { enabled = false } end
 swapButton = setupUI([[
 Panel
   height: 17
+  
   BotSwitch
     id: title
     anchors.top: parent.top
@@ -22,6 +23,7 @@ Panel
     $!on:
       image-color: gray
       color: white
+
   Button
     id: settings
     anchors.top: prev.top
@@ -551,7 +553,9 @@ end
 local function safeSetItem(widget, id)
   if not widget then return end
   id = tonumber(id) or 0
-  if id > 0 and widget.setItemId then widget:setItemId(id) end
+  if widget.setItemId then
+    widget:setItemId(id)
+  end
 end
 
 local function safeGetItem(widget)
@@ -583,7 +587,6 @@ local function setLabel(label, prefix, v)
   end
 end
 
--- Bloqueio: Unequip nunca fica < Equip
 local function bindEquipUnequipPair(sbEquip, sbUnequip, lbEquip, lbUnequip, store, keyEquip, keyUnequip)
   if not sbEquip or not sbUnequip then return end
 
@@ -652,20 +655,16 @@ local function bindBotSwitch(widget, store, key, defaultBool, text)
   end
 end
 
--- Exclusivo: ou Swap ou Equip Full (nunca os dois)
 local function bindExclusivePair(swSwap, swFull, store, keySwap, keyFull, textSwap, textFull)
   keySwap = keySwap or "ativador"
   keyFull = keyFull or "ativadorFull"
 
-  -- seta textos
   if textSwap and swSwap and swSwap.setText then swSwap:setText(textSwap) end
   if textFull and swFull and swFull.setText then swFull:setText(textFull) end
 
-  -- defaults
   store[keySwap] = (store[keySwap] == true)
   store[keyFull] = (store[keyFull] == true)
 
-  -- garante exclusividade na carga
   if store[keySwap] and store[keyFull] then
     store[keyFull] = false
   end
@@ -679,7 +678,6 @@ local function bindExclusivePair(swSwap, swFull, store, keySwap, keyFull, textSw
       w:setOn(newState)
       store[keySwap] = (newState == true)
 
-      -- se ligou Swap, desliga Full
       if newState == true then
         store[keyFull] = false
         if swFull and swFull.setOn then swFull:setOn(false) end
@@ -693,7 +691,6 @@ local function bindExclusivePair(swSwap, swFull, store, keySwap, keyFull, textSw
       w:setOn(newState)
       store[keyFull] = (newState == true)
 
-      -- se ligou Full, desliga Swap
       if newState == true then
         store[keySwap] = false
         if swSwap and swSwap.setOn then swSwap:setOn(false) end
@@ -702,8 +699,6 @@ local function bindExclusivePair(swSwap, swFull, store, keySwap, keyFull, textSw
   end
 end
 
-
--- Defaults
 local DEFAULT_BP = 2854
 local ringDefaults = {
   [1] = { ringEquipavel = 3051, ringEquipavelID = 3088, backpack = DEFAULT_BP },
@@ -764,9 +759,6 @@ bindAmuletRow(panelSwap.abaAmulet.amulet1, 1)
 bindAmuletRow(panelSwap.abaAmulet.amulet2, 2)
 bindAmuletRow(panelSwap.abaAmulet.amulet3, 3)
 
--- =========================
--- EFEITO "$on" (item-blessed quando itemId > 0)
--- =========================
 local function autoItemOnState(root)
   if not root or root:isDestroyed() then return end
 
@@ -825,27 +817,16 @@ local function autoItemOnState(root)
 end
 
 autoItemOnState(panelSwap)
+
 -- ==========================================================
--- SWAP + EQUIP FULL (RING/AMULET) - BLOCO ÚNICO FINAL
+-- SWAP + EQUIP FULL (RING/AMULET)
 -- ==========================================================
 
-local __swapOld = g_game.getClientVersion() <= 900
-local __SWAP_CD_MS = 500  -- ✅ 7s
+local __swapOld = g_game.getClientVersion() < 900
+local __SWAP_CD_MS = 500
 
 local __CD_MIGHT_RING = 3048
 local __CD_SSA_AMULET = 3081
-
-local function __shouldUseCooldown(kind, item2, item3)
-  item2 = tonumber(item2) or 0
-  item3 = tonumber(item3) or 0
-  if kind == "ring" then
-    return (item2 == __CD_MIGHT_RING) or (item3 == __CD_MIGHT_RING)
-  end
-  if kind == "amulet" then
-    return (item2 == __CD_SSA_AMULET) or (item3 == __CD_SSA_AMULET)
-  end
-  return false
-end
 
 local __SLOT_FINGER = SlotFinger or 9
 local __SLOT_NECK   = SlotNeck or 2
@@ -880,6 +861,40 @@ local function __isIdIn(id, a, b)
   return (a > 0 and id == a) or (b > 0 and id == b)
 end
 
+local function __shouldUseCooldown(kind, item2, item3)
+  item2 = tonumber(item2) or 0
+  item3 = tonumber(item3) or 0
+  if kind == "ring" then
+    return (item2 == __CD_MIGHT_RING) or (item3 == __CD_MIGHT_RING)
+  end
+  if kind == "amulet" then
+    return (item2 == __CD_SSA_AMULET) or (item3 == __CD_SSA_AMULET)
+  end
+  return false
+end
+
+local function __getContainersSafe()
+  if type(getContainers) == "function" then
+    return getContainers() or {}
+  end
+  if g_game and type(g_game.getContainers) == "function" then
+    return g_game.getContainers() or {}
+  end
+  return {}
+end
+
+local function __findBPContainer(bpId)
+  bpId = tonumber(bpId) or 0
+  if bpId <= 0 then return nil end
+  for _, container in pairs(__getContainersSafe()) do
+    local cItem = container.getContainerItem and container:getContainerItem()
+    if cItem and cItem.getId and tonumber(cItem:getId()) == bpId then
+      return container
+    end
+  end
+  return nil
+end
+
 local function __findItemById(id)
   id = tonumber(id) or 0
   if id <= 0 then return nil end
@@ -889,7 +904,7 @@ local function __findItemById(id)
     if it then return it end
   end
 
-  for _, c in ipairs(g_game.getContainers() or {}) do
+  for _, c in ipairs(__getContainersSafe()) do
     local items = c:getItems() or {}
     for i = 1, #items do
       local it = items[i]
@@ -899,6 +914,150 @@ local function __findItemById(id)
     end
   end
   return nil
+end
+
+local function __forceOpenContainerById(id)
+  id = tonumber(id) or 0
+  if id <= 0 then return false end
+
+  local slots = { getBack and getBack() or nil, getAmmo and getAmmo() or nil, __getFinger(), __getNeck(), getLeft and getLeft() or nil, getRight and getRight() or nil }
+  for i = 1, #slots do
+    local it = slots[i]
+    if it and it.getId and tonumber(it:getId()) == id then
+      g_game.open(it, nil)
+      return true
+    end
+  end
+
+  local it = __findItemById(id)
+  if it and it.isContainer and it:isContainer() then
+    g_game.open(it, nil)
+    return true
+  end
+
+  for _, c in pairs(__getContainersSafe()) do
+    for _, cit in ipairs(c:getItems() or {}) do
+      if cit and cit.isContainer and cit:isContainer() and cit.getId and tonumber(cit:getId()) == id then
+        g_game.open(cit, nil)
+        return true
+      end
+    end
+  end
+
+  return false
+end
+
+local __bpOpenRetryUntil = 0
+
+local function __ensureBpIsOpen(bpId)
+  bpId = tonumber(bpId) or 0
+  if bpId <= 0 then return false end
+  if __findBPContainer(bpId) then return true end
+
+  local t = __nowMillis()
+  if __bpOpenRetryUntil > t then return false end
+  __bpOpenRetryUntil = t + 400
+
+  return __forceOpenContainerById(bpId)
+end
+
+local function __getContainerCount(container)
+  if not container then return 0 end
+  if container.getItemsCount then return tonumber(container:getItemsCount()) or 0 end
+  return #(container:getItems() or {})
+end
+
+local function __getContainerCapacity(container)
+  if not container then return 0 end
+  if container.getCapacity then return tonumber(container:getCapacity()) or 0 end
+  return 0
+end
+
+local function __getFreeContainer(preferBpId)
+  preferBpId = tonumber(preferBpId) or 0
+
+  if preferBpId > 0 then
+    local preferred = __findBPContainer(preferBpId)
+    if preferred then
+      local cap = __getContainerCapacity(preferred)
+      local count = __getContainerCount(preferred)
+      if cap <= 0 or count < cap then
+        return preferred
+      end
+    end
+  end
+
+  for _, container in ipairs(__getContainersSafe()) do
+    local cname = (container.getName and container:getName() or ""):lower()
+    local cap = __getContainerCapacity(container)
+    local count = __getContainerCount(container)
+    if (cap <= 0 or count < cap) and
+       not cname:find("dead") and
+       not cname:find("slain") and
+       not cname:find("depot") and
+       not cname:find("quiver") then
+      return container
+    end
+  end
+
+  return nil
+end
+
+local __lastUnequipWarn = 0
+local __pendingUnequip = {
+  ring = { [1]=0, [2]=0, [3]=0 },
+  amulet = { [1]=0, [2]=0, [3]=0 }
+}
+
+local function __queueUnequip(kind, idx)
+  if not kind or not idx then return end
+  __pendingUnequip[kind][idx] = __nowMillis() + 250
+end
+
+local function __clearUnequip(kind, idx)
+  if not kind or not idx then return end
+  __pendingUnequip[kind][idx] = 0
+end
+
+local function __isUnequipPending(kind, idx)
+  if not kind or not idx then return false end
+  return (__pendingUnequip[kind][idx] or 0) > __nowMillis()
+end
+
+local function unequipItem(slot, preferBpId, kind, idx)
+  local item = getSlot(slot)
+  if not item then
+    __clearUnequip(kind, idx)
+    return false
+  end
+
+  if not __swapOld then
+    g_game.equipItemId(item:getId())
+    __clearUnequip(kind, idx)
+    return true
+  end
+
+  local dest = __getFreeContainer(preferBpId)
+  if dest then
+    local count = __getContainerCount(dest)
+    local pos = dest:getSlotPosition(count)
+    g_game.move(item, pos, item:getCount())
+    __clearUnequip(kind, idx)
+    return true
+  end
+
+  if preferBpId > 0 then
+    __ensureBpIsOpen(preferBpId)
+  end
+
+  __queueUnequip(kind, idx)
+
+  local t = __nowMillis()
+  if t - (__lastUnequipWarn or 0) > 1500 then
+    __lastUnequipWarn = t
+  end
+
+  return false
 end
 
 local function __equipIdToSlot(id, slot)
@@ -916,7 +1075,6 @@ local function __equipIdToSlot(id, slot)
   return true
 end
 
--- id1 = item "real" na bp (ITEM2), id2 = id quando equipado (ITEM3)
 local function __equipSpecialToSlot(id1, id2, slot)
   id1 = tonumber(id1) or 0
   id2 = tonumber(id2) or 0
@@ -944,50 +1102,9 @@ local function __getActiveIndexByKey(kindTable, keyName)
   return nil, nil
 end
 
--- ==========================================================
--- ✅ UNEQUIPITEM (adaptado pro teu swap: usa __swapOld)
--- ==========================================================
-local function unequipItem(slot)
-  local item = getSlot(slot)
-  if not item then return false end
-
-  if not __swapOld then
-    -- clientes novos: equipItemId no próprio item geralmente "toggle"/remove
-    g_game.equipItemId(item:getId())
-    return true
-  end
-
-  -- old: mover pra uma bp aberta "válida"
-  local dest = nil
-  for _, container in ipairs(g_game.getContainers() or {}) do
-    local cname = (container.getName and container:getName() or ""):lower()
-    local cap = container.getCapacity and container:getCapacity() or 0
-    local count = #(container.getItems() or {})
-    if cap > count and
-       not cname:find("dead") and not cname:find("slain") and
-       not cname:find("depot") and not cname:find("quiver") then
-      dest = container
-      break
-    end
-  end
-
-  if not dest then
-    warn("[Swap] Open Backpack.")
-    return false
-  end
-
-  local pos = dest:getSlotPosition(dest:getCapacity())
-  g_game.move(item, pos, item:getCount())
-  return true
-end
-
--- cooldowns locais
 local __ringCdUntil   = { [1]=0, [2]=0, [3]=0 }
 local __amuletCdUntil = { [1]=0, [2]=0, [3]=0 }
 
--- =========================
--- SWAP RING
--- =========================
 local function __processRingSwap(idx, row)
   local hp = hppercent()
   local t  = __nowMillis()
@@ -998,22 +1115,22 @@ local function __processRingSwap(idx, row)
   local ring1  = tonumber(row.ringPadrao) or 0
   local item2  = tonumber(row.ringEquipavel) or 0
   local item3  = tonumber(row.ringEquipavelID) or 0
+  local bpId   = tonumber(row.backpack) or 0
 
   local equipPct   = tonumber(row.hpEquip) or 0
   local unequipPct = tonumber(row.hpDesequip) or equipPct
 
-  -- ✅ cooldown só quando for Might Ring (3048)
+  local hasNormal = ring1 > 0
   local useCd = __shouldUseCooldown("ring", item2, item3)
   local cdUntil = (useCd and (__ringCdUntil[idx] or 0)) or 0
   local cdActive = (useCd and (cdUntil > t)) or false
 
-  -- 1) HP baixo -> equipa especial (e inicia/reset do cooldown quando equipar)
   if hp < equipPct then
+    __clearUnequip("ring", idx)
     if __isIdIn(fid, item2, item3) then return false end
 
     if __equipSpecialToSlot(item2, item3, __SLOT_FINGER) then
       if useCd then
-        -- ✅ sempre que EQUIPAR Might, conta 7s
         __ringCdUntil[idx] = t + __SWAP_CD_MS
       end
       delay(120)
@@ -1022,37 +1139,43 @@ local function __processRingSwap(idx, row)
     return false
   end
 
-  -- 2) ✅ durante cooldown do Might:
-  --    se HP > unequip -> DESEQUIPA o slot (fica vazio)
-  --    e NÃO equipa padrão até o cooldown acabar
   if useCd and cdActive then
-    if hp > unequipPct then
-      if fid ~= 0 then
-        if unequipItem(__SLOT_FINGER) then
-          delay(120)
-          return true
-        end
+    if hp > unequipPct and fid ~= 0 then
+      if unequipItem(__SLOT_FINGER, bpId, "ring", idx) then
+        delay(120)
+        return true
       end
     end
     return false
   end
 
-  -- 3) cooldown acabou (ou não é Might): se HP > unequip -> equipa padrão
   if hp > unequipPct then
-    if ring1 > 0 and fid ~= ring1 then
-      if __equipIdToSlot(ring1, __SLOT_FINGER) then
+    if hasNormal then
+      __clearUnequip("ring", idx)
+      if fid ~= ring1 then
+        if __equipIdToSlot(ring1, __SLOT_FINGER) then
+          delay(120)
+          return true
+        end
+      end
+      return false
+    end
+
+    if fid ~= 0 then
+      if unequipItem(__SLOT_FINGER, bpId, "ring", idx) then
         delay(120)
         return true
       end
+    else
+      __clearUnequip("ring", idx)
     end
+  else
+    __clearUnequip("ring", idx)
   end
 
   return false
 end
 
--- =========================
--- SWAP AMULET
--- =========================
 local function __processAmuletSwap(idx, row)
   local hp = hppercent()
   local t  = __nowMillis()
@@ -1063,22 +1186,22 @@ local function __processAmuletSwap(idx, row)
   local amu1  = tonumber(row.amuletPadrao) or 0
   local item2 = tonumber(row.amuletEquipavel) or 0
   local item3 = tonumber(row.amuletEquipavelID) or 0
+  local bpId  = tonumber(row.backpack) or 0
 
   local equipPct   = tonumber(row.hpEquip) or 0
   local unequipPct = tonumber(row.hpDesequip) or equipPct
 
-  -- ✅ cooldown só quando for SSA (3081)
+  local hasNormal = amu1 > 0
   local useCd = __shouldUseCooldown("amulet", item2, item3)
   local cdUntil = (useCd and (__amuletCdUntil[idx] or 0)) or 0
   local cdActive = (useCd and (cdUntil > t)) or false
 
-  -- 1) HP baixo -> equipa especial (e inicia/reset do cooldown quando equipar)
   if hp < equipPct then
+    __clearUnequip("amulet", idx)
     if __isIdIn(nid, item2, item3) then return false end
 
     if __equipSpecialToSlot(item2, item3, __SLOT_NECK) then
       if useCd then
-        -- ✅ sempre que EQUIPAR SSA, conta 7s
         __amuletCdUntil[idx] = t + __SWAP_CD_MS
       end
       delay(120)
@@ -1087,38 +1210,43 @@ local function __processAmuletSwap(idx, row)
     return false
   end
 
-  -- 2) ✅ durante cooldown do SSA:
-  --    se HP > unequip -> DESEQUIPA o slot (fica vazio)
-  --    e NÃO equipa padrão até o cooldown acabar
   if useCd and cdActive then
-    if hp > unequipPct then
-      if nid ~= 0 then
-        if unequipItem(__SLOT_NECK) then
-          delay(120)
-          return true
-        end
+    if hp > unequipPct and nid ~= 0 then
+      if unequipItem(__SLOT_NECK, bpId, "amulet", idx) then
+        delay(120)
+        return true
       end
     end
     return false
   end
 
-  -- 3) cooldown acabou (ou não é SSA): se HP > unequip -> equipa padrão
   if hp > unequipPct then
-    if amu1 > 0 and nid ~= amu1 then
-      if __equipIdToSlot(amu1, __SLOT_NECK) then
+    if hasNormal then
+      __clearUnequip("amulet", idx)
+      if nid ~= amu1 then
+        if __equipIdToSlot(amu1, __SLOT_NECK) then
+          delay(120)
+          return true
+        end
+      end
+      return false
+    end
+
+    if nid ~= 0 then
+      if unequipItem(__SLOT_NECK, bpId, "amulet", idx) then
         delay(120)
         return true
       end
+    else
+      __clearUnequip("amulet", idx)
     end
+  else
+    __clearUnequip("amulet", idx)
   end
 
   return false
 end
 
--- =========================
--- EQUIP FULL (RING/AMULET)
--- regra: independente do hp, se equipado != ITEM3 -> equipa ITEM2
--- =========================
 local __ringFullRetryUntil   = { [1]=0, [2]=0, [3]=0 }
 local __amuletFullRetryUntil = { [1]=0, [2]=0, [3]=0 }
 local __FULL_RETRY_MS = 600
@@ -1169,10 +1297,6 @@ local function __processAmuletFull(idx, row)
   return false
 end
 
--- =========================
--- MACROS
--- =========================
-
 macro(50, function()
   if not storage["swapButton"] or storage["swapButton"].enabled ~= true then return end
   local st = storage["panelSwapStorage"]
@@ -1195,7 +1319,7 @@ macro(50, function()
   __processAmuletSwap(idx, row)
 end)
 
-macro(50,function()
+macro(50, function()
   if not storage["swapButton"] or storage["swapButton"].enabled ~= true then return end
   local st = storage["panelSwapStorage"]
   if not st or not st.ring then return end
@@ -1204,7 +1328,7 @@ macro(50,function()
   __processRingFull(idx, row)
 end)
 
-macro(50,function()
+macro(50, function()
   if not storage["swapButton"] or storage["swapButton"].enabled ~= true then return end
   local st = storage["panelSwapStorage"]
   if not st or not st.amulet then return end
@@ -1213,19 +1337,10 @@ macro(50,function()
   __processAmuletFull(idx, row)
 end)
 
------------------------------------------
-
 -- ==========================================================
--- LNS | BP INTELIGENTE (FINAL - FORCE OPEN)
--- - Abre sozinho a BP configurada (base: renameContainers / forceOpen)
--- - Mantém 1 slot livre (dropa 1 item se container cheio)
--- - Se acabar ITEM2/ITEM3, abre a próxima BP dentro dela
--- - Roda só na linha ativa (Swap ou Equip Full) e só com BP Inteligente ON
+-- LNS | BP INTELIGENTE
 -- ==========================================================
 
--- --------------------------
--- Scheduler / millis
--- --------------------------
 local function __sched(ms, fn)
   if type(scheduleEvent) == "function" then return scheduleEvent(fn, ms) end
   if g_dispatcher and type(g_dispatcher.scheduleEvent) == "function" then
@@ -1241,90 +1356,6 @@ local function __ms()
   return 0
 end
 
--- --------------------------
--- Containers helper (igual teu padrão)
--- --------------------------
-local function __getContainersSafe()
-  if type(getContainers) == "function" then
-    return getContainers() or {}
-  end
-  if g_game and type(g_game.getContainers) == "function" then
-    return g_game.getContainers() or {}
-  end
-  return {}
-end
-
-local function __findBPContainer(bpId)
-  bpId = tonumber(bpId) or 0
-  if bpId <= 0 then return nil end
-  for _, container in pairs(__getContainersSafe()) do
-    local cItem = container:getContainerItem()
-    if cItem and cItem.getId and tonumber(cItem:getId()) == bpId then
-      return container
-    end
-  end
-  return nil
-end
-
--- --------------------------
--- FORCE OPEN CONTAINER BY ID (base: renameContainers)
--- --------------------------
-local function __forceOpenContainerById(id)
-  id = tonumber(id) or 0
-  if id <= 0 then return false end
-
-  -- 1) tenta slots
-  local slots = { getBack(), getAmmo(), getFinger(), getNeck(), getLeft(), getRight() }
-  for i = 1, #slots do
-    local it = slots[i]
-    if it and it.getId and tonumber(it:getId()) == id then
-      g_game.open(it, nil)
-      return true
-    end
-  end
-
-  -- 2) tenta findItem (no teu client “pega” bem)
-  if type(findItem) == "function" then
-    local it = findItem(id)
-    if it and it.isContainer and it:isContainer() then
-      g_game.open(it, nil)
-      return true
-    end
-  end
-
-  -- 3) varre containers abertos e abre pelo item
-  for _, c in pairs(__getContainersSafe()) do
-    for _, it in ipairs(c:getItems() or {}) do
-      if it and it.isContainer and it:isContainer() and it.getId and tonumber(it:getId()) == id then
-        g_game.open(it, nil)
-        return true
-      end
-    end
-  end
-
-  return false
-end
-
--- throttle global p/ não spammar open
-local __bpOpenRetryUntil = 0
-
-local function __ensureBpIsOpen(bpId)
-  bpId = tonumber(bpId) or 0
-  if bpId <= 0 then return false end
-
-  -- já tá aberta?
-  if __findBPContainer(bpId) then return true end
-
-  local t = __ms()
-  if __bpOpenRetryUntil > t then return false end
-  __bpOpenRetryUntil = t + 400
-
-  return __forceOpenContainerById(bpId)
-end
-
--- --------------------------
--- Slot livre (drop 1 item se full)
--- --------------------------
 local function __playerPos()
   if pos then return pos() end
   if player and player.getPosition then return player:getPosition() end
@@ -1334,16 +1365,14 @@ end
 local function __keepSlotFree(container)
   if not container then return end
 
-  local cap = container.getCapacity and container:getCapacity() or 20
-  local count = container.getItemsCount and container:getItemsCount() or #(container:getItems() or {})
-  if count < cap then return end
+  local cap = __getContainerCapacity(container)
+  local count = __getContainerCount(container)
+  if cap > 0 and count < cap then return end
 
   local p = __playerPos()
   if not p then return end
 
   local items = container:getItems() or {}
-
-  -- dropa um item NÃO-container (não dropa bag)
   for i = #items, 1, -1 do
     local it = items[i]
     if it then
@@ -1355,15 +1384,11 @@ local function __keepSlotFree(container)
     end
   end
 
-  -- fallback: dropa o primeiro
   if items[1] then
     g_game.move(items[1], p, 1)
   end
 end
 
--- --------------------------
--- Detectar se container tem item2/item3
--- --------------------------
 local function __containerHasId(container, idA, idB)
   if not container then return false end
   idA = tonumber(idA) or 0
@@ -1381,17 +1406,12 @@ local function __containerHasId(container, idA, idB)
   return false
 end
 
--- --------------------------
--- Abrir próxima BP de dentro da BP atual
--- (e retornar o ID aberto)
--- --------------------------
 local function __openNextBPInside(container)
   if not container then return 0 end
   for _, it in ipairs(container:getItems() or {}) do
     if it and it.isContainer and it:isContainer() and it.getId then
       local nextId = tonumber(it:getId()) or 0
       if nextId > 0 then
-        -- abre como no teu exemplo: g_game.open(item, container)
         g_game.open(it, container)
         delay(200)
         return nextId
@@ -1401,9 +1421,6 @@ local function __openNextBPInside(container)
   return 0
 end
 
--- --------------------------
--- Linha ativa: full tem prioridade, senão swap
--- --------------------------
 local function __getActiveRowByMode(tbl)
   for i = 1, 3 do
     local r = tbl and tbl[i]
@@ -1416,15 +1433,11 @@ local function __getActiveRowByMode(tbl)
   return nil, nil
 end
 
--- --------------------------
--- Estado por linha (qual BP está ativa)
--- --------------------------
 local __bpActive = {
   ring   = { [1]=0, [2]=0, [3]=0 },
   amulet = { [1]=0, [2]=0, [3]=0 },
 }
 
--- throttle por linha para abrir próxima / dropar
 local __bpTickUntil = {
   ring   = { [1]=0, [2]=0, [3]=0 },
   amulet = { [1]=0, [2]=0, [3]=0 },
@@ -1440,19 +1453,16 @@ local function __bpInteligenteTick(kind, idx, row, item2, item3)
   if (__bpTickUntil[kind][idx] or 0) > t then return end
   __bpTickUntil[kind][idx] = t + 250
 
-  -- define BP ativa inicial
   if (__bpActive[kind][idx] or 0) <= 0 then
     __bpActive[kind][idx] = baseBpId
   end
 
   local activeId = __bpActive[kind][idx]
 
-  -- 1) garantir BP ativa aberta sozinha
   __ensureBpIsOpen(activeId)
 
   local cont = __findBPContainer(activeId)
 
-  -- fallback: tenta a BP base
   if not cont and activeId ~= baseBpId then
     __bpActive[kind][idx] = baseBpId
     activeId = baseBpId
@@ -1462,10 +1472,8 @@ local function __bpInteligenteTick(kind, idx, row, item2, item3)
 
   if not cont then return end
 
-  -- 2) manter 1 slot livre
   __keepSlotFree(cont)
 
-  -- 3) se acabou item2/item3, abre próxima BP dentro e troca activeId
   if not __containerHasId(cont, item2, item3) then
     local nextId = __openNextBPInside(cont)
 
@@ -1477,18 +1485,11 @@ local function __bpInteligenteTick(kind, idx, row, item2, item3)
       return
     end
 
-    -- ✅ CHEGOU NO ÚLTIMO: não tem item2/3 e não tem próxima BP -> fecha o container
     g_game.close(cont)
-
-    -- evita reabrir em loop (dorme 15s)
     __bpTickUntil[kind][idx] = __ms() + 30000
     return
   end
 end
-
--- ==========================================================
--- MACROS: BP Inteligente Ring / Amulet
--- ==========================================================
 
 macro(200, function()
   if not storage["swapButton"] or storage["swapButton"].enabled ~= true then return end
@@ -1517,7 +1518,3 @@ macro(200, function()
 
   __bpInteligenteTick("amulet", idx, row, item2, item3)
 end)
-
-
-
-
