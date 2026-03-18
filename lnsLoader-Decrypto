@@ -463,7 +463,7 @@ local function checkAuthorization(onDone)
       return
     end
   else
-    if uuid == "" or #macs == 0 then
+    if #macs == 0 then
       if type(onDone) == "function" then onDone(false, "") end
       return
     end
@@ -499,17 +499,17 @@ local function checkAuthorization(onDone)
     end
 
     for _, row in ipairs(data.table.rows) do
-      -- idx 1 = UUID, idx 2 = MAC, idx 3 = NOME
+      -- A = UUID, B = MAC, C = NOME
       local sheetUUID = trim(getCellValue(row, 1))
       local sheetMAC  = normalizeMAC(getCellValue(row, 2))
       local sheetNAME = trim(getCellValue(row, 3))
 
-      if sheetUUID ~= "" and sheetUUID == uuid then
-        if mobile then
+      if mobile then
+        if sheetUUID ~= "" and sheetUUID == uuid then
           if type(onDone) == "function" then onDone(true, sheetNAME) end
           return
         end
-
+      else
         if sheetMAC ~= "" then
           for i = 1, #macs do
             if macs[i] == sheetMAC then
