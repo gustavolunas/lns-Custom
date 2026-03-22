@@ -1,4 +1,5 @@
 setDefaultTab("Tools")
+warn("Follow Atualizado")
 
 local scriptsPanelName = "Scriptss"
 
@@ -837,7 +838,7 @@ macro(200, function()
 
     if c and not g_game.isFollowing() then
         g_game.follow(c)
-    elseif c and g_game.isFollowing() and getDistanceBetween(pos(), c:getPosition()) > 1 then
+    elseif c and g_game.isFollowing() and getDistanceBetween(pos(), c:getPosition()) > 8 then
         g_game.cancelFollow()
         g_game.follow(c)
     end
