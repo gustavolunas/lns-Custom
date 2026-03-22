@@ -1,5 +1,5 @@
 setDefaultTab("Tools")
-warn("Follow Atualizado")
+print("Follow Atualizado")
 
 local scriptsPanelName = "Scriptss"
 
