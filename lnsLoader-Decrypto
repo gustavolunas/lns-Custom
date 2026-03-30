@@ -1,1 +1,1 @@
-warn("CUSTOM DESATIVADA, UTILIZE A VERSÃO NOVA!")
+modules.game_textmessage.displayGameMessage("CUSTOM DESATIVADA, UTILIZE A VERSÃO NOVA!")
